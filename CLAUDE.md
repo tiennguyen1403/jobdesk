@@ -49,8 +49,15 @@ Core data model (Phase 1+): `job` (a normalized posting) 1–1 `application` (th
 
 ## Conventions
 
-- **Language:** explanatory prose and comments in Vietnamese; identifiers, code, and table/field names in English.
-- **Tailwind v4 (CSS-first):** styling is enabled by `@import "tailwindcss";` in `web/src/index.css` via the `@tailwindcss/vite` plugin. There is intentionally **no** `tailwind.config.js` or PostCSS config — customize through a `@theme {}` block in that CSS file.
+- **Language:** all repository content — docs, code, comments, commit messages, PRs — is in **English**. (Vietnamese is used only when chatting with the maintainer, never in the repo.)
+- **Tailwind v4 (CSS-first):** styling is enabled by `@import "tailwindcss";` in `web/src/index.css` via the `@tailwindcss/vite` plugin. There is intentionally **no** `tailwind.config.js` or PostCSS config — customize through a `@theme {}` block in that CSS file. The web UI is **dark by default** (slate-950).
+
+## Daily workflow (skills)
+
+- `/plan-milestone "Phase N — ..."` — research a milestone and create its GitHub issues (one per task, each with a DoD + `area:*` label). Run at the start of a Phase.
+- `/work-issue <number>` — implement one issue end to end: branch off `development`, code, run checks, open a PR. One issue per session.
+
+Project hooks in `.claude/settings.json`: ask before editing `.env` (secrets); warn when committing on `main`.
 
 ## Git & branches
 
