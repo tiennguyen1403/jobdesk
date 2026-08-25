@@ -1,0 +1,12 @@
+# Normalize line endings to LF in the repo so Docker/Linux and every OS agree.
+* text=auto eol=lf
+
+# Binary assets (never normalize)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
