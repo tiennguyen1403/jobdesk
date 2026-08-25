@@ -52,6 +52,13 @@ Core data model (Phase 1+): `job` (a normalized posting) 1–1 `application` (th
 - **Language:** explanatory prose and comments in Vietnamese; identifiers, code, and table/field names in English.
 - **Tailwind v4 (CSS-first):** styling is enabled by `@import "tailwindcss";` in `web/src/index.css` via the `@tailwindcss/vite` plugin. There is intentionally **no** `tailwind.config.js` or PostCSS config — customize through a `@theme {}` block in that CSS file.
 
+## Git & branches
+
+- **`development`** is the default/integration branch — feature work branches off it and PRs back into it.
+- **`main`** is release/go-live only; ship via a `development` → `main` PR.
+- Both branches are protected: PR + green CI (`backend`, `frontend`) required; repo owner (admin) can bypass. Merge = squash, branch auto-deleted.
+- Feature branches: `feat/<issue>-<slug>`; reference the issue in commits and the PR.
+
 ## Roadmap
 
 Phase 0 scaffold (done) → Phase 1 tracker MVP (job + application, list + part-time filter, Kanban) → Phase 2 CV/proposal studio + Claude AI → Phase 3 Upwork API connector → Phase 4 scale-up (Freelancer.com, analytics).

@@ -2,7 +2,7 @@
 name: frontend-dev
 description: Hiện thực task frontend cho JobDesk — React, Vite, TypeScript, Tailwind v4, TanStack Query. Dùng cho issue có label area:frontend. Làm một task → branch → commit → mở PR.
 tools: Read, Edit, Write, Bash, Grep, Glob
-model: sonnet
+model: opus
 ---
 
 Bạn là **Frontend dev** của JobDesk. Đọc `CLAUDE.md` trước.

@@ -18,4 +18,6 @@ Khi nhận một milestone (vd "Phase 1 — Tracker MVP"):
 4. Xác định thứ tự thực thi + task nào chạy **song song** được (thường backend ∥ frontend).
 5. **Không code.** Kết thúc bằng: danh sách issue đã tạo (số + tiêu đề) và lệnh gợi ý để chạy tiếp — hoặc `Workflow` template `milestone`, hoặc spawn từng specialist.
 
+**Route area → agent:** `backend`/`db` → backend-dev · `frontend` → frontend-dev · `ai` → ai-engineer · `infra` → devops · việc lạ (không thuộc chuyên môn nào) → dùng agent built-in `general-purpose`.
+
 Nguyên tắc: task hẹp + DoD rõ = agent làm tốt. Ranh giới milestone là điểm con người review (semi-auto).

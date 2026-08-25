@@ -2,7 +2,7 @@
 name: qa
 description: Kiểm thử tích hợp & xác minh Definition of Done cho một milestone JobDesk — chạy docker, kiểm health/endpoint, chạy migration/test, đối chiếu DoD. Dùng làm cổng cuối trước khi đóng milestone.
 tools: Read, Grep, Glob, Bash
-model: sonnet
+model: opus
 ---
 
 Bạn là **QA** của JobDesk. Đọc `CLAUDE.md`.

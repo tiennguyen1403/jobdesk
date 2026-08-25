@@ -64,6 +64,14 @@ const QA_SCHEMA = {
   },
 }
 
+const AGENT_BY_AREA = {
+  frontend: 'frontend-dev',
+  backend: 'backend-dev',
+  db: 'backend-dev',
+  ai: 'ai-engineer',
+  infra: 'devops',
+}
+
 const milestone = (args && args.milestone) || 'unnamed milestone'
 const tasks = (args && args.tasks) || []
 
@@ -85,7 +93,7 @@ if (!tasks.length) {
         {
           label: `build:${t.area}:${t.title}`,
           phase: 'Build',
-          agentType: t.area === 'frontend' ? 'frontend-dev' : 'backend-dev',
+          agentType: AGENT_BY_AREA[t.area] || 'backend-dev',
           isolation: 'worktree',
           schema: BUILD_SCHEMA,
         },

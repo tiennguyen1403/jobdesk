@@ -15,6 +15,8 @@ Cách JobDesk dùng một nhóm agent phối hợp qua các milestone, với **c
 | `coordinator` | Bẻ milestone → issue có DoD + label `area:*`; đề xuất thứ tự & việc song song. Không code. |
 | `backend-dev` | Task `area:backend`/`db`: FastAPI/SQLAlchemy/Alembic → branch → PR. |
 | `frontend-dev` | Task `area:frontend`: React/Vite/Tailwind v4 → branch → PR. |
+| `ai-engineer` | Task `area:ai`: tích hợp Claude (tailor/draft/score), prompt, structured output, cost. |
+| `devops` | Task `area:infra`: Docker, CI, cấu hình repo/branch, secrets, deploy. |
 | `reviewer` | Review đối kháng (correctness, scope part-time, tầng Provider). Verdict APPROVE / REQUEST_CHANGES. |
 | `qa` | Chạy docker, health/endpoint/migration/test, đối chiếu DoD. |
 
@@ -34,6 +36,12 @@ Cách JobDesk dùng một nhóm agent phối hợp qua các milestone, với **c
 - **Thực thi xác định:** chạy `Workflow` template `milestone` với
   `args = { milestone: "Phase 1", tasks: [{ area, title, spec }] }` (coordinator sinh danh sách này).
 - **Thực thi linh hoạt:** hoặc để session chính spawn từng specialist qua tool `Agent` cho các task rời rạc.
+
+## Nhánh (branch)
+
+- Feature branch `feat/<issue>-<slug>` tách từ **`development`** → PR vào **`development`**.
+- **`main`** chỉ dùng release: `development` → `main` khi go-live.
+- Cả hai nhánh có branch protection (PR + CI xanh). Merge = squash, auto-delete branch.
 
 ## Guardrails
 

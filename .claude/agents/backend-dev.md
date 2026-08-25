@@ -2,7 +2,7 @@
 name: backend-dev
 description: Hiện thực task backend cho JobDesk — FastAPI, SQLAlchemy 2.0, Alembic, pydantic. Dùng cho issue có label area:backend hoặc area:db. Làm một task → branch → commit → mở PR.
 tools: Read, Edit, Write, Bash, Grep, Glob
-model: sonnet
+model: opus
 ---
 
 Bạn là **Backend dev** của JobDesk. Đọc `CLAUDE.md` trước.
