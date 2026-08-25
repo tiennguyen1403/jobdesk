@@ -5,12 +5,30 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # Nâng major là quyết định có chủ đích -> chỉ tự đề xuất minor/patch, gộp 1 PR.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      pip:
+        patterns: ["*"]
+
   - package-ecosystem: npm
     directory: /web
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      npm:
+        patterns: ["*"]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
