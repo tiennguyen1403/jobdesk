@@ -11,16 +11,14 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-slate-500">
-          Khung dự án đã chạy. Trạng thái kết nối API &amp; database:
-        </p>
+        <p className="text-slate-400">Project skeleton is running. API &amp; database status:</p>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        {isLoading && <p className="text-slate-500">Đang kiểm tra API…</p>}
+      <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+        {isLoading && <p className="text-slate-400">Checking API…</p>}
         {isError && (
-          <p className="text-red-600">
-            Không gọi được API. Kiểm tra backend đã chạy chưa (docker compose up).
+          <p className="text-red-400">
+            Could not reach the API. Make sure the backend is running (docker compose up).
           </p>
         )}
         {data && (
@@ -28,12 +26,12 @@ export default function Dashboard() {
             <li className="flex items-center gap-3">
               <Dot ok={data.status === 'ok'} />
               <span>API:</span>
-              <span className="font-mono text-sm">{data.status}</span>
+              <span className="font-mono text-sm text-slate-300">{data.status}</span>
             </li>
             <li className="flex items-center gap-3">
               <Dot ok={data.db} />
               <span>Database:</span>
-              <span className="font-mono text-sm">
+              <span className="font-mono text-sm text-slate-300">
                 {data.db ? 'connected' : 'down'}
               </span>
             </li>
@@ -41,9 +39,9 @@ export default function Dashboard() {
         )}
       </div>
 
-      <p className="text-sm text-slate-400">
-        Tiếp theo (Phase 1): model Job + Application, danh sách job và pipeline Kanban —
-        lọc riêng job part-time / theo giờ / theo dự án.
+      <p className="text-sm text-slate-500">
+        Next (Phase 1): Job + Application models, job list and pipeline Kanban — filtered to
+        part-time / hourly / project work.
       </p>
     </div>
   )
@@ -52,9 +50,7 @@ export default function Dashboard() {
 function Dot({ ok }: { ok: boolean }) {
   return (
     <span
-      className={`inline-block h-2.5 w-2.5 rounded-full ${
-        ok ? 'bg-emerald-500' : 'bg-red-500'
-      }`}
+      className={`inline-block h-2.5 w-2.5 rounded-full ${ok ? 'bg-emerald-400' : 'bg-red-400'}`}
     />
   )
 }

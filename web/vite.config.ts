@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
-    // usePolling giúp HMR hoạt động ổn định khi chạy trong Docker trên Windows
+    // usePolling keeps HMR reliable when running inside Docker on Windows
     watch: { usePolling: true },
   },
 })

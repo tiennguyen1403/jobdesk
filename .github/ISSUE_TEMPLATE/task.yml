@@ -1,5 +1,5 @@
 name: Task
-description: Một task để coordinator giao cho agent
+description: A task for the coordinator to assign to an agent
 labels: ["type:feat"]
 body:
   - type: input
@@ -12,7 +12,7 @@ body:
   - type: dropdown
     id: area
     attributes:
-      label: Area (route tới agent)
+      label: Area (routes to an agent)
       options:
         - backend
         - frontend
@@ -24,22 +24,22 @@ body:
   - type: textarea
     id: goal
     attributes:
-      label: Mục tiêu
-      description: Task cần đạt được gì
+      label: Goal
+      description: What the task must achieve
     validations:
       required: true
   - type: textarea
     id: dod
     attributes:
       label: Definition of Done
-      description: Tiêu chí kiểm chứng được (ưu tiên "chạy được X")
+      description: Verifiable criteria (prefer "X works")
       value: |
         - [ ]
-        - [ ] CI xanh
+        - [ ] CI green
     validations:
       required: true
   - type: textarea
     id: notes
     attributes:
-      label: Ràng buộc / ghi chú
-      placeholder: "Giữ scope part-time; job mới map về NormalizedJob; không auto-apply."
+      label: Constraints / notes
+      placeholder: "Keep the part-time scope; new jobs map to NormalizedJob; no auto-apply."

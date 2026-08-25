@@ -23,7 +23,7 @@ jobs:
         run: ruff check .
       - name: Syntax check
         run: python -m compileall app
-      # Bật khi có test (Phase 1+):
+      # Enable when tests exist (Phase 1+):
       # - name: Tests
       #   run: pytest -q
 

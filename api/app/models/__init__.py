@@ -1,4 +1,4 @@
-# Đăng ký ORM models ở đây để Alembic autogenerate nhìn thấy chúng.
-# Phase 1 sẽ thêm, ví dụ:
+# Register ORM models here so Alembic autogenerate can see them.
+# Phase 1 will add, e.g.:
 #   from .job import Job
 #   from .application import Application

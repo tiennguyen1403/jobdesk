@@ -1,18 +1,18 @@
-// @ts-nocheck — file này là Workflow DSL (chạy bởi tool Workflow với các global agent()/pipeline()/args
-// và hỗ trợ top-level await/return). KHÔNG phải TS module thường, nên tắt type-check của IDE ở đây.
+// @ts-nocheck — this is a Workflow DSL file (run by the Workflow tool, with the agent()/pipeline()/args
+// globals and support for top-level await/return). It is NOT a normal TS module, so disable IDE type-checking here.
 export const meta = {
   name: 'milestone',
-  description: 'Chạy 1 milestone JobDesk: build song song theo task → review đối kháng → QA tổng thể → báo cáo',
+  description: 'Run one JobDesk milestone: build tasks in parallel -> adversarial review -> overall QA -> report',
   phases: [
-    { title: 'Build', detail: 'specialist code từng task trong worktree riêng' },
-    { title: 'Review', detail: 'reviewer soi từng thay đổi' },
-    { title: 'QA', detail: 'qa chạy docker + đối chiếu Definition of Done' },
+    { title: 'Build', detail: 'each specialist codes a task in its own worktree' },
+    { title: 'Review', detail: 'reviewer inspects each change' },
+    { title: 'QA', detail: 'qa runs docker + checks the Definition of Done' },
   ],
 }
 
 // args = { milestone: 'Phase 1', tasks: [{ area, title, spec }] }
-// - area: 'backend' | 'frontend' | 'db' | 'ai' | 'infra'  (route tới agent)
-// - Coordinator thường sinh danh sách tasks này (kèm số issue) rồi truyền vào đây.
+// - area: 'backend' | 'frontend' | 'db' | 'ai' | 'infra'  (routes to an agent)
+// - The coordinator usually produces this task list (with issue numbers) and passes it in.
 
 const BUILD_SCHEMA = {
   type: 'object',
@@ -79,17 +79,17 @@ let output
 
 if (!tasks.length) {
   output = {
-    error: 'Truyền args.tasks = [{ area, title, spec }]. Chạy agent "coordinator" trước để sinh danh sách.',
+    error: 'Pass args.tasks = [{ area, title, spec }]. Run the "coordinator" agent first to produce the list.',
   }
 } else {
-  // Build ∥ Review theo pipeline: task nào build xong thì review ngay (không chờ nhau).
+  // Build + Review as a pipeline: a task is reviewed as soon as it builds (no barrier).
   const results = await pipeline(
     tasks,
     (t) =>
       agent(
-        `Task "${t.title}" cho ${milestone}.\nSpec: ${t.spec}\n` +
-          `Giữ scope part-time; job mới map về NormalizedJob; không auto-apply. ` +
-          `Tạo branch, code, commit (gắn số issue), mở PR.`,
+        `Task "${t.title}" for ${milestone}.\nSpec: ${t.spec}\n` +
+          `Keep the part-time scope; new jobs must map to NormalizedJob; no auto-apply. ` +
+          `Create a branch, code, commit (reference the issue), open a PR.`,
         {
           label: `build:${t.area}:${t.title}`,
           phase: 'Build',
@@ -100,8 +100,8 @@ if (!tasks.length) {
       ),
     (build, t) =>
       agent(
-        `Review đối kháng thay đổi cho task "${t.title}". Tìm bug, sai scope, phá abstraction, thiếu DoD.\n` +
-          `Tóm tắt build: ${JSON.stringify(build)}`,
+        `Adversarially review the change for task "${t.title}". Find bugs, scope errors, broken abstractions, missing DoD.\n` +
+          `Build summary: ${JSON.stringify(build)}`,
         { label: `review:${t.title}`, phase: 'Review', agentType: 'reviewer', schema: REVIEW_SCHEMA },
       ).then((review) => ({ task: t, build, review })),
   )
@@ -109,11 +109,11 @@ if (!tasks.length) {
   const clean = results.filter(Boolean)
   const changesRequested = clean.filter((r) => r.review && r.review.verdict === 'REQUEST_CHANGES')
 
-  // QA tổng thể milestone (một lần, sau khi các task đã build + review).
+  // Overall QA for the milestone (once, after tasks are built + reviewed).
   const qa = await agent(
-    `Bạn là QA. Chạy docker compose, kiểm health + endpoint mới, chạy migration/test nếu có, ` +
-      `đối chiếu Definition of Done của ${milestone}.\n` +
-      `Các task: ${JSON.stringify(clean.map((r) => r.task && r.task.title))}`,
+    `You are QA. Run docker compose, check health + the new endpoints, run migrations/tests if any, ` +
+      `and reconcile the Definition of Done for ${milestone}.\n` +
+      `Tasks: ${JSON.stringify(clean.map((r) => r.task && r.task.title))}`,
     { label: 'qa:milestone', phase: 'QA', agentType: 'qa', schema: QA_SCHEMA },
   )
 

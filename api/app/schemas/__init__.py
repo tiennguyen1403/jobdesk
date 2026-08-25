@@ -1,1 +1,1 @@
-# Pydantic schemas (request/response) — thêm ở Phase 1.
+# Pydantic request/response schemas — added in Phase 1.

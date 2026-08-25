@@ -1,4 +1,4 @@
-# Ghim tên project = jobdesk (độc lập với tên folder) → đổi tên folder không ảnh hưởng
+# Pin the project name to jobdesk (independent of the folder name) so a folder rename is harmless
 name: jobdesk
 
 services:

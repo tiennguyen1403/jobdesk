@@ -9,7 +9,7 @@ router = APIRouter(tags=["health"])
 
 @router.get("/health")
 def health(db: Session = Depends(get_db)) -> dict:
-    """Kiểm tra API sống + kết nối được database."""
+    """Health check: API is alive and can reach the database."""
     db_ok = True
     try:
         db.execute(text("SELECT 1"))

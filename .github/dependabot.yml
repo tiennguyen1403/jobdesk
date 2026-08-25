@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
-    # Nâng major là quyết định có chủ đích -> chỉ tự đề xuất minor/patch, gộp 1 PR.
+    # Major bumps are a deliberate decision -> only propose minor/patch, grouped into one PR.
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]

@@ -10,7 +10,7 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
 class Base(DeclarativeBase):
-    """Base class cho mọi ORM model."""
+    """Base class for all ORM models."""
     pass
 
 

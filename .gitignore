@@ -12,6 +12,7 @@ node_modules/
 dist/
 dist-ssr/
 *.local
+*.tsbuildinfo
 
 # Env & secrets
 .env
@@ -24,5 +25,5 @@ dist-ssr/
 .DS_Store
 Thumbs.db
 
-# Claude Code — commit agents/ & workflows/ (dùng chung), bỏ cấu hình/máy cá nhân
+# Claude Code — commit agents/ & workflows/ (shared); ignore personal/local config
 .claude/settings.local.json

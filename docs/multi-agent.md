@@ -1,53 +1,53 @@
-# Mô hình vận hành multi-agent (semi-auto)
+# Multi-agent operating model (semi-auto)
 
-Cách JobDesk dùng một nhóm agent phối hợp qua các milestone, với **coordinator** điều phối và **người gác cổng ở ranh giới milestone**.
+How JobDesk uses a team of agents that collaborate across milestones, coordinated by a **coordinator**, with a **human gate at each milestone boundary**.
 
-## Nguyên tắc
+## Principles
 
-- **GitHub là bộ nhớ chung + hàng đợi việc.** Milestone = Phase; Issue = task; PR = deliverable; CI = trọng tài khách quan.
-- **Coordinator lập kế hoạch, specialist thực thi, reviewer/QA làm cổng.** Không agent nào "tự chạy cả project".
-- **Semi-auto:** agent chạy trọn một milestone (tạo issue → code → review → PR); **bạn review & duyệt PR ở ranh giới milestone**.
+- **GitHub is the shared memory + work queue.** Milestone = Phase; Issue = task; PR = deliverable; CI = the objective judge.
+- **Coordinator plans, specialists build, reviewer/QA gate.** No agent "runs the whole project" on its own.
+- **Semi-auto:** agents run a full milestone (create issues → code → review → PR); **you review & approve the PRs at the milestone boundary**.
 
-## Vai trò (định nghĩa ở `.claude/agents/`)
+## Roles (defined in `.claude/agents/`)
 
-| Agent | Việc |
+| Agent | Job |
 |---|---|
-| `coordinator` | Bẻ milestone → issue có DoD + label `area:*`; đề xuất thứ tự & việc song song. Không code. |
-| `backend-dev` | Task `area:backend`/`db`: FastAPI/SQLAlchemy/Alembic → branch → PR. |
-| `frontend-dev` | Task `area:frontend`: React/Vite/Tailwind v4 → branch → PR. |
-| `ai-engineer` | Task `area:ai`: tích hợp Claude (tailor/draft/score), prompt, structured output, cost. |
-| `devops` | Task `area:infra`: Docker, CI, cấu hình repo/branch, secrets, deploy. |
-| `reviewer` | Review đối kháng (correctness, scope part-time, tầng Provider). Verdict APPROVE / REQUEST_CHANGES. |
-| `qa` | Chạy docker, health/endpoint/migration/test, đối chiếu DoD. |
+| `coordinator` | Break a milestone into issues with a DoD + `area:*` labels; propose order & parallelism. No code. |
+| `backend-dev` | `area:backend`/`db`: FastAPI/SQLAlchemy/Alembic → branch → PR. |
+| `frontend-dev` | `area:frontend`: React/Vite/Tailwind v4 → branch → PR. |
+| `ai-engineer` | `area:ai`: Claude integration (tailor/draft/score), prompts, structured output, cost. |
+| `devops` | `area:infra`: Docker, CI, repo/branch config, secrets, deploy. |
+| `reviewer` | Adversarial review (correctness, part-time scope, Provider layer). Verdict APPROVE / REQUEST_CHANGES. |
+| `qa` | Run docker, check health/endpoints/migrations/tests, verify the DoD. |
 
-## Luồng một milestone
+## Flow for one milestone
 
 ```
-1. coordinator: đọc milestone → tạo issues (gh) gắn milestone + label area
-2. Workflow "milestone": [backend-dev ∥ frontend-dev] mỗi task 1 worktree/branch → PR
-                         → reviewer soi từng PR → qa chạy tổng thể
-3. Cổng: CI xanh + reviewer APPROVE → auto-merge (squash)
-4. Bạn (human): review kết quả tích hợp ở cuối milestone → duyệt hoặc yêu cầu sửa
+1. coordinator: read the milestone → create issues (gh) with milestone + area labels
+2. Workflow "milestone": [backend-dev ∥ frontend-dev ∥ ...] each task in its own worktree/branch → PR
+                         → reviewer checks each PR → qa runs the whole thing
+3. Gate: CI green + reviewer APPROVE → auto-merge (squash)
+4. You (human): review the integrated result at the milestone boundary → approve or request changes
 ```
 
-## Cách chạy
+## How to run
 
-- **Lập kế hoạch:** spawn agent `coordinator` với mục tiêu milestone (vd "Phase 1 — Tracker MVP"). Nó tạo issue.
-- **Thực thi xác định:** chạy `Workflow` template `milestone` với
-  `args = { milestone: "Phase 1", tasks: [{ area, title, spec }] }` (coordinator sinh danh sách này).
-- **Thực thi linh hoạt:** hoặc để session chính spawn từng specialist qua tool `Agent` cho các task rời rạc.
+- **Plan:** run `/plan-milestone "Phase 1 — Tracker MVP"` (or spawn the `coordinator` agent). It researches and creates the issues.
+- **Work one issue:** run `/work-issue <number>` — reads the issue, branches off `development`, implements, and opens a PR.
+- **Deterministic execution:** run the `Workflow` template `milestone` with
+  `args = { milestone: "Phase 1", tasks: [{ area, title, spec }] }` (the coordinator produces this list).
 
-## Nhánh (branch)
+## Branches
 
-- Feature branch `feat/<issue>-<slug>` tách từ **`development`** → PR vào **`development`**.
-- **`main`** chỉ dùng release: `development` → `main` khi go-live.
-- Cả hai nhánh có branch protection (PR + CI xanh). Merge = squash, auto-delete branch.
+- Feature branch `feat/<issue>-<slug>` off **`development`** → PR into **`development`**.
+- **`main`** is release-only: `development` → `main` at go-live.
+- Both branches are protected (PR + green CI). Merge = squash, branch auto-deleted.
 
 ## Guardrails
 
-- **Worktree isolation** khi nhiều agent sửa file song song → không giẫm chân nhau.
-- **Review + CI là cổng bắt buộc** (branch protection trên `main`) trước khi merge.
-- **Issue nhỏ, DoD rõ** — agent làm tốt khi task hẹp.
-- **Ground truth chung:** `CLAUDE.md` + blueprint + spec từng milestone.
+- **Worktree isolation** when multiple agents edit files in parallel → no clobbering.
+- **Review + CI are required gates** (branch protection) before merge.
+- **Small issues, clear DoD** — agents do best with narrow tasks.
+- **Shared ground truth:** `CLAUDE.md` + blueprint + a per-milestone spec.
 
-> Thực tế: multi-agent tự chủ hoàn toàn vẫn dễ lỗi. Giá trị nằm ở chạy song song specialist + review/verify độc lập + theo dõi milestone có cấu trúc — **với người gác cổng ở mỗi milestone**.
+> Reality: fully autonomous multi-agent dev is still error-prone. The value is parallel specialist execution + independent review/verification + structured milestone tracking — **with a human gate at each milestone**.

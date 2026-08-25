@@ -1,5 +1,5 @@
-# Ruff — cấu hình baseline tối thiểu & ổn định (khớp default của ruff).
-# Muốn chặt hơn thì thêm "I" (sort import), "B" (bugbear), "UP" (pyupgrade) vào select.
+# Ruff — minimal, stable baseline (matches ruff defaults).
+# To be stricter, add "I" (import sort), "B" (bugbear), "UP" (pyupgrade) to select.
 target-version = "py312"
 line-length = 100
 

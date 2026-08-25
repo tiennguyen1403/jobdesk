@@ -1,19 +1,19 @@
-## Tóm tắt
-<!-- Thay đổi này làm gì và vì sao. -->
+## Summary
+<!-- What this change does and why. -->
 
 Closes #
 
-## Loại thay đổi
+## Type of change
 - [ ] Feature
 - [ ] Bugfix
 - [ ] Chore / refactor
 
 ## Definition of Done
-- [ ] CI xanh (backend + frontend)
-- [ ] Đúng phạm vi **part-time / hourly / project** (không dính job full-time)
-- [ ] Không phá tầng Provider (job mới vẫn map về `NormalizedJob`); không auto-apply/auto-message
-- [ ] Đã chạy thử local (`docker compose up`) nếu đụng runtime
-- [ ] Cập nhật `CLAUDE.md` / docs nếu đổi kiến trúc
+- [ ] CI green (backend + frontend)
+- [ ] Stays within the **part-time / hourly / project** scope (no full-time jobs)
+- [ ] Doesn't break the Provider layer (new jobs still map to `NormalizedJob`); no auto-apply/auto-message
+- [ ] Ran locally (`docker compose up`) if it touches runtime
+- [ ] Updated `CLAUDE.md` / docs if the architecture changed
 
-## Ghi chú cho reviewer / QA
-<!-- Điểm cần chú ý, rủi ro, cách kiểm thử. -->
+## Notes for reviewer / QA
+<!-- Things to watch, risks, how to test. -->

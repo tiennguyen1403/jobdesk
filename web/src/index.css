@@ -1,6 +1,12 @@
 @import "tailwindcss";
 
-/* Tuỳ biến theme (v4, CSS-first) đặt ở đây khi cần, ví dụ:
+/* Default to a dark UI (slate-950) and hint the browser for dark scrollbars/form controls. */
+html {
+  background-color: #020617;
+  color-scheme: dark;
+}
+
+/* Add CSS-first theme tokens here when needed, e.g.:
 @theme {
   --color-brand: #0e7a80;
 }
