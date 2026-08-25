@@ -1,0 +1,7 @@
+# Ruff — cấu hình baseline tối thiểu & ổn định (khớp default của ruff).
+# Muốn chặt hơn thì thêm "I" (sort import), "B" (bugbear), "UP" (pyupgrade) vào select.
+target-version = "py312"
+line-length = 100
+
+[lint]
+select = ["E4", "E7", "E9", "F"]

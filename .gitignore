@@ -23,3 +23,6 @@ dist-ssr/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Claude Code — commit agents/ & workflows/ (dùng chung), bỏ cấu hình/máy cá nhân
+.claude/settings.local.json

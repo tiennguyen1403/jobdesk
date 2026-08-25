@@ -1,0 +1,45 @@
+name: Task
+description: Một task để coordinator giao cho agent
+labels: ["type:feat"]
+body:
+  - type: input
+    id: milestone
+    attributes:
+      label: Milestone / Phase
+      placeholder: "Phase 1 — Tracker MVP"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area (route tới agent)
+      options:
+        - backend
+        - frontend
+        - db
+        - ai
+        - infra
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Mục tiêu
+      description: Task cần đạt được gì
+    validations:
+      required: true
+  - type: textarea
+    id: dod
+    attributes:
+      label: Definition of Done
+      description: Tiêu chí kiểm chứng được (ưu tiên "chạy được X")
+      value: |
+        - [ ]
+        - [ ] CI xanh
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Ràng buộc / ghi chú
+      placeholder: "Giữ scope part-time; job mới map về NormalizedJob; không auto-apply."

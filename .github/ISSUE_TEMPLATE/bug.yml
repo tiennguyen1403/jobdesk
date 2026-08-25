@@ -1,0 +1,18 @@
+name: Bug
+description: Báo lỗi
+labels: ["type:bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: Hiện tượng
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Các bước tái hiện
+  - type: textarea
+    id: expected
+    attributes:
+      label: Kỳ vọng
