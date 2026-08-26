@@ -12,6 +12,22 @@ jobs:
     defaults:
       run:
         working-directory: api
+    services:
+      # Throwaway Postgres for the test suite. The models use Postgres-only types
+      # (JSONB, ARRAY, native ENUM), so tests need a real Postgres, not SQLite.
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: jobdesk_test
+          POSTGRES_USER: jobdesk
+          POSTGRES_PASSWORD: jobdesk
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jobdesk -d jobdesk_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -23,9 +39,10 @@ jobs:
         run: ruff check .
       - name: Syntax check
         run: python -m compileall app
-      # Enable when tests exist (Phase 1+):
-      # - name: Tests
-      #   run: pytest -q
+      - name: Tests
+        env:
+          DATABASE_URL: postgresql+psycopg://jobdesk:jobdesk@localhost:5432/jobdesk_test
+        run: pytest -q
 
   frontend:
     name: frontend
@@ -42,3 +59,5 @@ jobs:
         run: npm install
       - name: Typecheck & build
         run: npm run build
+      - name: Test
+        run: npm run test
