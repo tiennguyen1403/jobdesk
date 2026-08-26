@@ -7,6 +7,7 @@ from .config import settings
 from .routers import (
     ai,
     applications,
+    capture,
     cvs,
     health,
     jobs,
@@ -63,6 +64,7 @@ app.include_router(proposals.router, prefix="/api")
 app.include_router(saved_searches.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 app.include_router(upwork.router, prefix="/api")
+app.include_router(capture.router, prefix="/api")
 
 
 @app.get("/")
