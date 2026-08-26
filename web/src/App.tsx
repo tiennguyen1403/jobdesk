@@ -2,6 +2,7 @@ import { Routes, Route, NavLink } from 'react-router-dom'
 import Dashboard from './pages/Dashboard'
 import Jobs from './pages/Jobs'
 import Pipeline from './pages/Pipeline'
+import Studio from './pages/Studio'
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
   `text-sm transition-colors ${
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/pipeline" element={<Pipeline />} />
+          <Route path="/studio/:jobId" element={<Studio />} />
         </Routes>
       </main>
     </div>

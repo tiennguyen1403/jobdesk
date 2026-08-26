@@ -37,6 +37,11 @@ export interface Job {
   skills: string[]
   client_country: string | null
   posted_at: string | null
+  // --- AI match scoring (score_match); null until the job is scored ---
+  match_score: number | null
+  match_reasons: string[] | null
+  match_part_time_fit: boolean | null
+  match_scored_at: string | null
   created_at: string
   updated_at: string
   application: Application | null
@@ -111,3 +116,92 @@ export async function createJob(payload: JobCreate): Promise<Job> {
  * invalidate them all at once.
  */
 export const jobsQueryKey = (filters: JobFilters = {}) => ['jobs', filters] as const
+
+/** Extract FastAPI's ``{"detail": "..."}`` message, or a status-coded fallback. */
+async function readError(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = await res.json()
+    if (body && typeof body.detail === 'string') return body.detail
+  } catch {
+    // Body wasn't JSON — fall through to the generic message.
+  }
+  return `${fallback} (${res.status})`
+}
+
+/** GET /api/jobs/{id} — one job with its persisted match score. */
+export async function getJob(id: number): Promise<Job> {
+  const res = await fetch(`${API_BASE}/api/jobs/${id}`)
+  if (!res.ok) throw new Error(await readError(res, 'Failed to load job'))
+  return res.json()
+}
+
+/** Stable React Query key for a single job (the Studio's job feed). */
+export const jobQueryKey = (id: number) => ['job', id] as const
+
+// --- Phase 2 AI actions (mirror api/app/routers/jobs.py) ---------------------
+// Each POST runs a Claude feature and returns the saved result plus the call's
+// accounting (model / cost / run_id). JobDesk never auto-applies: tailor-cv and
+// draft-proposal only produce editable drafts the user copies out manually.
+
+/** The score_match result for a job (mirrors ScoreMatchResponse). */
+export interface ScoreMatchResult {
+  job_id: number
+  score: number // 0–100, higher = better evenings-and-weekends fit
+  reasons: string[]
+  part_time_fit: boolean
+  model: string
+  cost_usd: number
+  run_id: number
+}
+
+/** The tailor_cv result: the saved tailored CV (mirrors TailorCvResponse). */
+export interface TailorCvResult {
+  job_id: number
+  cv_id: number
+  base_cv_id: number
+  label: string
+  content: string // the tailored CV, as structured markdown
+  model: string
+  cost_usd: number
+  run_id: number
+}
+
+/** The draft_proposal result: the saved proposal (mirrors DraftProposalResponse). */
+export interface DraftProposalResult {
+  job_id: number
+  proposal_id: number
+  cv_id: number | null
+  content: string // the proposal draft, as markdown
+  model: string
+  cost_usd: number
+  run_id: number
+}
+
+/** POST /api/jobs/{id}/score-match — (re)score the part-time fit; persists it on the job. */
+export async function scoreMatch(id: number): Promise<ScoreMatchResult> {
+  const res = await fetch(`${API_BASE}/api/jobs/${id}/score-match`, { method: 'POST' })
+  if (!res.ok) throw new Error(await readError(res, 'Failed to score match'))
+  return res.json()
+}
+
+/** POST /api/jobs/{id}/tailor-cv — tailor the base CV to the job; saves a new tailored cv row. */
+export async function tailorCv(id: number, baseCvId?: number | null): Promise<TailorCvResult> {
+  const res = await fetch(`${API_BASE}/api/jobs/${id}/tailor-cv`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(baseCvId != null ? { base_cv_id: baseCvId } : {}),
+  })
+  if (!res.ok) throw new Error(await readError(res, 'Failed to tailor CV'))
+  return res.json()
+}
+
+/** POST /api/jobs/{id}/draft-proposal — draft a proposal for the job; saves a new proposal row. */
+export async function draftProposal(id: number, cvId?: number | null): Promise<DraftProposalResult> {
+  const res = await fetch(`${API_BASE}/api/jobs/${id}/draft-proposal`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(cvId != null ? { cv_id: cvId } : {}),
+  })
+  if (!res.ok) throw new Error(await readError(res, 'Failed to draft proposal'))
+  return res.json()
+}

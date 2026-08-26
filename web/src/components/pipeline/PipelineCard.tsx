@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   APPLICATION_STAGES,
   STAGE_LABELS,
@@ -188,10 +189,18 @@ export default function PipelineCard({
             ))}
           </select>
         </label>
-        <span className="font-mono text-[10px] uppercase tracking-wide text-slate-600">
-          {job.source}
-          {applied && ` · ${applied}`}
-        </span>
+        <div className="flex items-center gap-2">
+          <Link
+            to={`/studio/${job.id}`}
+            className="rounded-md border border-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-300 transition-colors hover:border-emerald-500/60 hover:text-emerald-300"
+          >
+            Studio
+          </Link>
+          <span className="font-mono text-[10px] uppercase tracking-wide text-slate-600">
+            {job.source}
+            {applied && ` · ${applied}`}
+          </span>
+        </div>
       </div>
     </article>
   )

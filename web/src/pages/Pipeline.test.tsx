@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
 import Pipeline from './Pipeline'
 import { updateApplication } from '../lib/api/applications'
 
@@ -47,7 +48,11 @@ vi.mock('../lib/api/applications', () => {
 
 function renderWithClient(ui: ReactElement) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>{ui}</MemoryRouter>
+    </QueryClientProvider>,
+  )
 }
 
 describe('Pipeline page', () => {

@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
 import Jobs from './Jobs'
 import { listJobs } from '../lib/api/jobs'
 
@@ -39,7 +40,11 @@ vi.mock('../lib/api/jobs', () => {
 
 function renderWithClient(ui: ReactElement) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>{ui}</MemoryRouter>
+    </QueryClientProvider>,
+  )
 }
 
 describe('Jobs page', () => {
