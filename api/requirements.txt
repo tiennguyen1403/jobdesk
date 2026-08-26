@@ -6,12 +6,16 @@ alembic>=1.13,<2.0
 pydantic>=2.9,<3.0
 pydantic-settings>=2.5,<3.0
 
+# HTTP client for outbound calls — the Upwork OAuth2 token endpoint and the
+# GraphQL job search (app.services.upwork_oauth, app.providers.upwork). Also used
+# by fastapi.testclient.TestClient.
+httpx>=0.27,<0.29
+
 # --- AI (Phase 2) ---
 anthropic>=1.0,<2.0
 
 # --- Tests (Phase 1+) ---
 pytest>=8.0,<9.0
-httpx>=0.27,<0.29   # required by fastapi.testclient.TestClient
 
 # --- Lint (matches CI) ---
 ruff>=0.6,<1.0   # so `docker compose exec api ruff check .` works locally, like CI
