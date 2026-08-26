@@ -1,6 +1,7 @@
 import { Routes, Route, NavLink } from 'react-router-dom'
 import Dashboard from './pages/Dashboard'
 import Jobs from './pages/Jobs'
+import Pipeline from './pages/Pipeline'
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
   `text-sm transition-colors ${
@@ -37,20 +38,9 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/jobs" element={<Jobs />} />
-          <Route path="/pipeline" element={<PipelinePlaceholder />} />
+          <Route path="/pipeline" element={<Pipeline />} />
         </Routes>
       </main>
-    </div>
-  )
-}
-
-// Temporary stop-gap so the Pipeline nav link isn't dead; the Kanban board
-// arrives in its own Phase 1 issue, which replaces this element.
-function PipelinePlaceholder() {
-  return (
-    <div className="space-y-2">
-      <h1 className="text-2xl font-bold tracking-tight">Pipeline</h1>
-      <p className="text-slate-400">The Kanban board lands in a later Phase 1 issue.</p>
     </div>
   )
 }
