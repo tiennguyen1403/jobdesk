@@ -230,3 +230,36 @@ def test_score_match_unknown_job_is_404_before_any_ai_call(client: TestClient, m
     monkeypatch.setattr(settings, "anthropic_api_key", "test-key")
     assert client.post("/api/jobs/999999/score-match").status_code == 404
     assert client.get("/api/ai/runs", params={"feature": "score_match"}).json() == []
+
+
+def test_score_match_schema_avoids_unsupported_keywords() -> None:
+    """Regression guard: the structured-output json_schema must not use numeric
+    range keywords. The Anthropic structured-output validator rejects
+    ``minimum`` / ``maximum`` on an integer with a 400 — a failure the mocked
+    client here can't see, so it only surfaced against the real API. The 0–100
+    bound lives in the field ``description`` + the ``_parse_score`` clamp instead.
+    """
+    from app.ai.service import _SCORE_MATCH_FORMAT
+
+    # The structured-output validator rejects value-constraint keywords with a 400
+    # — numeric range, array size, string length/pattern, and enumerated counts.
+    forbidden = {
+        "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf",
+        "maxItems", "minItems", "maxLength", "minLength", "pattern",
+    }
+
+    def walk(node) -> None:
+        if isinstance(node, dict):
+            for key, value in node.items():
+                assert key not in forbidden, f"unsupported json_schema keyword {key!r}"
+                walk(value)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+
+    walk(_SCORE_MATCH_FORMAT)
+
+    # The score stays an integer, with its 0–100 range carried in the description.
+    score = _SCORE_MATCH_FORMAT["format"]["schema"]["properties"]["score"]
+    assert score["type"] == "integer"
+    assert "100" in score["description"]
