@@ -62,6 +62,32 @@ class TailorCvResponse(BaseModel):
     run_id: int
 
 
+class DraftProposalRequest(BaseModel):
+    """Optional body for POST /api/jobs/{id}/draft-proposal.
+
+    ``cv_id`` picks a CV to ground the proposal in (the freelancer's real
+    background — a base CV or one already tailored for this job). Omit it (or send
+    an empty body) to auto-pick: the CV already tailored for this job if one
+    exists, else the newest base CV, else draft without a CV.
+    """
+
+    cv_id: int | None = None
+
+
+class DraftProposalResponse(BaseModel):
+    """The draft_proposal result: the saved proposal plus the call's accounting."""
+
+    model_config = ConfigDict(protected_namespaces=())
+
+    job_id: int
+    proposal_id: int  # the new proposal row
+    cv_id: int | None  # the CV it was grounded in, if any (None if drafted without one)
+    content: str  # the proposal draft, as markdown
+    model: str
+    cost_usd: float
+    run_id: int
+
+
 class SmokeRequest(BaseModel):
     """Optional body for the smoke call; defaults to a trivial ping prompt."""
 

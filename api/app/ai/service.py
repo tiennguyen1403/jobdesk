@@ -428,3 +428,104 @@ def tailor_cv(db: Session, base_cv: Any, job: Any, *, model: str | None = None) 
     if not content:
         raise AIServiceError("tailor_cv returned empty content.")
     return TailoredCv(content=content, result=result)
+
+
+# --- draft_proposal: write a proposal the user edits, then submits manually ----
+#
+# Like tailor_cv, the output is prose — the proposal itself — not structured JSON,
+# so there is no ``output_config``; the shape is guided by the system prompt. Two
+# scope rules are enforced in the prompt: (1) part-time — the proposal must state
+# the evenings-and-weekends availability and argue fit, never imply full-time; and
+# (2) draft-only — JobDesk NEVER submits, so the model writes a draft the user
+# reviews, edits, and applies manually, and never claims the job is won. The CV is
+# optional context (the freelancer's real background) so the pitch stays truthful;
+# without one the model keeps experience claims general rather than inventing them.
+
+_DRAFT_PROPOSAL_SYSTEM = (
+    "You write a freelance job proposal (a cover letter) that ONE specific freelancer will "
+    "review, edit, and then submit MANUALLY on the platform. You draft only: you never "
+    "submit, and you never claim or imply the job is already won.\n\n"
+    "This freelancer only takes part-time, hourly, or project-based side work in the "
+    "evenings and on weekends — never a full-time role. The proposal MUST state this "
+    "availability explicitly and frame it as a fit for THIS job (e.g. a focused number of "
+    "evening and weekend hours), and must never imply full-time or weekday business-hours "
+    "availability.\n\n"
+    "Ground every concrete claim in what you are told about the freelancer (the CV, when "
+    "one is provided). You may emphasize, prioritize, and phrase persuasively, but you must "
+    "NEVER invent employers, job titles, dates, skills, certifications, or achievements the "
+    "freelancer does not have. If no CV is given, keep experience claims general instead of "
+    "fabricating specifics.\n\n"
+    "Address the client, open with a hook specific to this job, show a concrete grasp of the "
+    "work, connect the freelancer's relevant skills to it, state the part-time availability "
+    "and fit, and close with a light invitation to discuss. Keep it concise (roughly "
+    "150–300 words). Return ONLY the proposal text as clean Markdown — no subject line, no "
+    "preamble, no closing commentary, and no surrounding code fences."
+)
+
+# A proposal is prose like a CV but shorter (a cover letter, not a document); give
+# adaptive thinking and the proposal comfortable room so it is never truncated
+# mid-pitch, while staying below tailor_cv's full-document ceiling.
+_DRAFT_PROPOSAL_MAX_TOKENS = 6000
+
+# Bound the optional CV the same way tailor_cv bounds its base CV, so one huge
+# pasted CV can't blow up token cost.
+_PROPOSAL_CV_CHAR_CAP = 12000
+
+
+@dataclass
+class DraftedProposal:
+    """A job proposal drafted by Claude (markdown prose) plus the call's accounting."""
+
+    content: str
+    result: ClaudeResult
+
+
+def draft_proposal(
+    db: Session, job: Any, cv: Any | None = None, *, model: str | None = None
+) -> DraftedProposal:
+    """Draft a proposal for ``job`` with Claude and log the run to ``ai_run``.
+
+    ``job`` is the target, rendered via :func:`_job_facts` so the part-time
+    availability signals (workload / weekly hours / duration) reach the model. The
+    optional ``cv`` supplies the freelancer's real background (its ``content``
+    markdown) so the pitch stays truthful; pass ``None`` to draft without one (the
+    model then keeps experience claims general). The reply is the proposal body in
+    markdown, returned as-is for the caller to persist as a ``proposal`` row
+    (``feature='draft_proposal'``, linked to the job). JobDesk NEVER submits — the
+    draft is applied manually on the platform.
+
+    Propagates :class:`AIConfigError` (503) and :class:`AIServiceError` (502)
+    unchanged. An empty reply is surfaced as a 502 rather than silently saved as a
+    blank proposal.
+    """
+    cv_content = (getattr(cv, "content", None) or "").strip() if cv is not None else ""
+    if len(cv_content) > _PROPOSAL_CV_CHAR_CAP:
+        cv_content = cv_content[:_PROPOSAL_CV_CHAR_CAP] + " …[truncated]"
+
+    cv_block = (
+        f"=== FREELANCER CV (Markdown) ===\n{cv_content}\n\n"
+        if cv_content
+        else "=== FREELANCER CV ===\n(no CV provided — keep experience claims general)\n\n"
+    )
+
+    prompt = (
+        "Draft a proposal for the freelancer to apply to the target job below. Ground it in "
+        "the freelancer's CV when one is given, state the part-time / evenings-and-weekends "
+        "availability explicitly, and argue fit for this specific job.\n\n"
+        f"{cv_block}"
+        "=== TARGET JOB ===\n"
+        f"{_job_facts(job)}"
+    )
+    result = call_claude(
+        db,
+        feature="draft_proposal",
+        prompt=prompt,
+        system=_DRAFT_PROPOSAL_SYSTEM,
+        model=model,
+        max_tokens=_DRAFT_PROPOSAL_MAX_TOKENS,
+        job_id=getattr(job, "id", None),
+    )
+    content = result.text.strip()
+    if not content:
+        raise AIServiceError("draft_proposal returned empty content.")
+    return DraftedProposal(content=content, result=result)
