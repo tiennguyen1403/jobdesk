@@ -13,6 +13,13 @@ from .application import ApplicationCard, ApplicationUpdate, JobSummary
 from .cv import CvBase, CvCreate, CvRead, CvUpdate
 from .job import ApplicationRead, JobBase, JobCreate, JobRead, JobUpdate
 from .proposal import ProposalBase, ProposalCreate, ProposalRead, ProposalUpdate
+from .saved_search import (
+    SavedSearchBase,
+    SavedSearchCreate,
+    SavedSearchRead,
+    SavedSearchUpdate,
+    SearchQuery,
+)
 
 __all__ = [
     "AiRunRead",
@@ -34,6 +41,11 @@ __all__ = [
     "ProposalCreate",
     "ProposalRead",
     "ProposalUpdate",
+    "SavedSearchBase",
+    "SavedSearchCreate",
+    "SavedSearchRead",
+    "SavedSearchUpdate",
+    "SearchQuery",
     "ScoreMatchResponse",
     "SmokeRequest",
     "SmokeResponse",
