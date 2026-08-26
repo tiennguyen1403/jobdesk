@@ -34,7 +34,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install deps
-        run: pip install -r requirements.txt ruff
+        run: pip install -r requirements.txt
       - name: Lint (ruff)
         run: ruff check .
       - name: Syntax check
