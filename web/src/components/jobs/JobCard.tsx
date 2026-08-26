@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import type { Job } from '../../lib/api/jobs'
 
 /** Currency-aware budget label, e.g. "$30–$50/hr" or "$500 fixed". */
@@ -105,6 +106,15 @@ export default function JobCard({ job }: { job: Job }) {
         <span className="font-mono uppercase tracking-wide">{job.source}</span>
         {posted && <span>· posted {posted}</span>}
         {job.application && <span>· {job.application.status}</span>}
+        {job.match_score != null && (
+          <span className="font-mono text-emerald-300/80">· match {job.match_score}</span>
+        )}
+        <Link
+          to={`/studio/${job.id}`}
+          className="ml-auto rounded-md border border-slate-700 px-2.5 py-1 font-medium text-slate-200 transition-colors hover:border-emerald-500/60 hover:text-emerald-300"
+        >
+          Studio →
+        </Link>
       </div>
     </article>
   )
