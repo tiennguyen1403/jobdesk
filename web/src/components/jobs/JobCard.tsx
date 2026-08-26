@@ -27,6 +27,23 @@ function humanize(value: string): string {
   return value.replace(/_/g, ' ')
 }
 
+// Source badge — makes an ingested job legible at a glance (issue #59). Keyed by
+// the provider's `source`; an unknown source falls back to a neutral pill so a
+// future platform still renders without a code change.
+const SOURCE_LABELS: Record<string, string> = {
+  manual: 'Manual',
+  capture: 'Capture',
+  upwork: 'Upwork',
+}
+
+const SOURCE_STYLES: Record<string, string> = {
+  manual: 'bg-slate-800 text-slate-300 ring-slate-700',
+  capture: 'bg-sky-500/10 text-sky-300 ring-sky-500/30',
+  upwork: 'bg-emerald-500/10 text-emerald-300 ring-emerald-500/30',
+}
+
+const SOURCE_FALLBACK_STYLE = 'bg-slate-800 text-slate-300 ring-slate-700'
+
 function formatPosted(iso: string | null): string | null {
   if (!iso) return null
   const d = new Date(iso)
@@ -34,9 +51,21 @@ function formatPosted(iso: string | null): string | null {
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-export default function JobCard({ job }: { job: Job }) {
+export default function JobCard({
+  job,
+  onAddToPipeline,
+  isPromoting = false,
+}: {
+  job: Job
+  /** Promote an ingested job with no card into the Kanban at 'saved'. */
+  onAddToPipeline?: () => void
+  /** True while this job's promote request is in flight. */
+  isPromoting?: boolean
+}) {
   const posted = formatPosted(job.posted_at)
   const partTime = job.workload === 'part_time'
+  const sourceLabel = SOURCE_LABELS[job.source] ?? job.source
+  const sourceStyle = SOURCE_STYLES[job.source] ?? SOURCE_FALLBACK_STYLE
 
   return (
     <article className="rounded-xl border border-slate-800 bg-slate-900 p-5 transition-colors hover:border-slate-700">
@@ -102,19 +131,38 @@ export default function JobCard({ job }: { job: Job }) {
         </ul>
       )}
 
-      <div className="mt-4 flex items-center gap-3 text-xs text-slate-500">
-        <span className="font-mono uppercase tracking-wide">{job.source}</span>
-        {posted && <span>· posted {posted}</span>}
-        {job.application && <span>· {job.application.status}</span>}
-        {job.match_score != null && (
-          <span className="font-mono text-emerald-300/80">· match {job.match_score}</span>
-        )}
-        <Link
-          to={`/studio/${job.id}`}
-          className="ml-auto rounded-md border border-slate-700 px-2.5 py-1 font-medium text-slate-200 transition-colors hover:border-emerald-500/60 hover:text-emerald-300"
+      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
+        <span
+          className={`rounded-full px-2 py-0.5 font-medium ring-1 ${sourceStyle}`}
+          title={`Source: ${sourceLabel}`}
         >
-          Studio →
-        </Link>
+          {sourceLabel}
+        </span>
+        {posted && <span className="text-slate-500">posted {posted}</span>}
+        {job.application && (
+          <span className="capitalize text-slate-400">{job.application.status}</span>
+        )}
+        {job.match_score != null && (
+          <span className="font-mono text-emerald-300/80">match {job.match_score}</span>
+        )}
+        <div className="ml-auto flex items-center gap-2">
+          {!job.application && (
+            <button
+              type="button"
+              onClick={onAddToPipeline}
+              disabled={isPromoting}
+              className="rounded-md border border-emerald-600/50 px-2.5 py-1 font-medium text-emerald-300 transition-colors hover:border-emerald-500 hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isPromoting ? 'Adding…' : '+ Add to pipeline'}
+            </button>
+          )}
+          <Link
+            to={`/studio/${job.id}`}
+            className="rounded-md border border-slate-700 px-2.5 py-1 font-medium text-slate-200 transition-colors hover:border-emerald-500/60 hover:text-emerald-300"
+          >
+            Studio →
+          </Link>
+        </div>
       </div>
     </article>
   )

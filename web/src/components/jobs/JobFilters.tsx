@@ -5,6 +5,8 @@ export interface JobFiltersValue {
   partTime: boolean
   maxWeeklyHours: string
   budgetType: '' | BudgetType
+  /** Provider filter (client-side): '' = any source, else a provider key. */
+  source: string
   search: string
 }
 
@@ -53,6 +55,20 @@ export default function JobFilters({ value, onChange }: Props) {
           <option value="">Any</option>
           <option value="hourly">Hourly</option>
           <option value="fixed">Fixed</option>
+        </select>
+      </label>
+
+      <label className="flex flex-col gap-1 text-xs text-slate-400">
+        Source
+        <select
+          value={value.source}
+          onChange={(e) => onChange({ source: e.target.value })}
+          className={`${inputClass} w-32`}
+        >
+          <option value="">Any</option>
+          <option value="manual">Manual</option>
+          <option value="capture">Capture</option>
+          <option value="upwork">Upwork</option>
         </select>
       </label>
 

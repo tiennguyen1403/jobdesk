@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { jobsQueryKey, listJobs, type JobFilters as ApiJobFilters } from '../lib/api/jobs'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  createApplicationForJob,
+  jobsQueryKey,
+  listJobs,
+  type JobFilters as ApiJobFilters,
+} from '../lib/api/jobs'
 import JobCard from '../components/jobs/JobCard'
 import JobFilters, { type JobFiltersValue } from '../components/jobs/JobFilters'
 import AddJobForm from '../components/jobs/AddJobForm'
@@ -19,6 +24,7 @@ const INITIAL_FILTERS: JobFiltersValue = {
   partTime: true, // scope guardrail: start on the part-time lens
   maxWeeklyHours: '',
   budgetType: '',
+  source: '', // any provider
   search: '',
 }
 
@@ -38,12 +44,31 @@ export default function Jobs() {
   const [filters, setFilters] = useState<JobFiltersValue>(INITIAL_FILTERS)
   const [showForm, setShowForm] = useState(false)
   const debouncedSearch = useDebouncedValue(filters.search, 300)
+  const queryClient = useQueryClient()
 
   const apiFilters = toApiFilters(filters, debouncedSearch)
   const { data: jobs, isLoading, isError, isFetching } = useQuery({
     queryKey: jobsQueryKey(apiFilters),
     queryFn: () => listJobs(apiFilters),
   })
+
+  // Promote an ingested job (no card yet) into the Kanban at 'saved'. The backend
+  // opens the card; we then refresh both feeds so the Jobs list drops its "Add to
+  // pipeline" button and the board shows the new card. JobDesk never auto-applies.
+  const promote = useMutation({
+    mutationFn: (jobId: number) => createApplicationForJob(jobId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] })
+      queryClient.invalidateQueries({ queryKey: ['applications'] })
+    },
+  })
+  const promotingId = promote.isPending ? promote.variables ?? null : null
+
+  // The source filter is client-side: the backend has no `source` query param, so
+  // narrow the already-fetched list here (keeps `source` out of the query key).
+  const visibleJobs = filters.source
+    ? jobs?.filter((job) => job.source === filters.source)
+    : jobs
 
   return (
     <div className="space-y-6">
@@ -70,13 +95,19 @@ export default function Jobs() {
         onChange={(patch) => setFilters((f) => ({ ...f, ...patch }))}
       />
 
+      {promote.isError && (
+        <p className="text-sm text-red-400">
+          Could not add that job to the pipeline — it may already be there. Try refreshing.
+        </p>
+      )}
+
       {isLoading ? (
         <p className="text-slate-400">Loading jobs…</p>
       ) : isError ? (
         <p className="text-red-400">
           Could not load jobs. Make sure the backend is running (docker compose up).
         </p>
-      ) : !jobs || jobs.length === 0 ? (
+      ) : !visibleJobs || visibleJobs.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-800 bg-slate-900/40 p-10 text-center">
           <p className="text-slate-300">No jobs match these filters.</p>
           <p className="mt-1 text-sm text-slate-500">
@@ -86,13 +117,17 @@ export default function Jobs() {
       ) : (
         <>
           <p className="text-xs text-slate-500">
-            {jobs.length} job{jobs.length === 1 ? '' : 's'}
+            {visibleJobs.length} job{visibleJobs.length === 1 ? '' : 's'}
             {isFetching && ' · refreshing…'}
           </p>
           <ul className="space-y-4">
-            {jobs.map((job) => (
+            {visibleJobs.map((job) => (
               <li key={job.id}>
-                <JobCard job={job} />
+                <JobCard
+                  job={job}
+                  onAddToPipeline={() => promote.mutate(job.id)}
+                  isPromoting={promotingId === job.id}
+                />
               </li>
             ))}
           </ul>

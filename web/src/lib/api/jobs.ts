@@ -3,6 +3,10 @@
 // intentionally self-contained: types mirror the backend job schema
 // (api/app/schemas/job.py) and the calls speak the real /api/jobs contract.
 
+// Type-only import (erased at build time, so no runtime import cycle): the
+// promote action below returns the board card the backend hands back.
+import type { ApplicationCard } from './applications'
+
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000'
 
 export type BudgetType = 'hourly' | 'fixed'
@@ -137,6 +141,19 @@ export async function getJob(id: number): Promise<Job> {
 
 /** Stable React Query key for a single job (the Studio's job feed). */
 export const jobQueryKey = (id: number) => ['job', id] as const
+
+/**
+ * POST /api/jobs/{id}/application — open a pipeline card for an ingested job
+ * that has none yet (the Inbox → pipeline "promote" step). Jobs added by hand
+ * already start with a card; this covers postings from other providers (capture,
+ * Upwork) that arrive without one. The card enters at 'saved' — JobDesk never
+ * auto-applies. 409 if the job is already in the pipeline.
+ */
+export async function createApplicationForJob(jobId: number): Promise<ApplicationCard> {
+  const res = await fetch(`${API_BASE}/api/jobs/${jobId}/application`, { method: 'POST' })
+  if (!res.ok) throw new Error(await readError(res, 'Failed to add job to pipeline'))
+  return res.json()
+}
 
 // --- Phase 2 AI actions (mirror api/app/routers/jobs.py) ---------------------
 // Each POST runs a Claude feature and returns the saved result plus the call's
