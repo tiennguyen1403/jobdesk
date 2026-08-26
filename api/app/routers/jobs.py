@@ -1,12 +1,15 @@
+from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from ..ai import score_match
 from ..db import get_db
 from ..models import Application, ApplicationStatus, Job
 from ..providers import ManualProvider
+from ..schemas.ai import ScoreMatchResponse
 from ..schemas.application import ApplicationCard
 from ..schemas.job import JobCreate, JobRead, JobUpdate
 
@@ -98,6 +101,40 @@ def update_job(job_id: int, payload: JobUpdate, db: Session = Depends(get_db)) -
     db.commit()
     db.refresh(job)
     return job
+
+
+@router.post("/{job_id}/score-match", response_model=ScoreMatchResponse)
+def score_job_match(job_id: int, db: Session = Depends(get_db)) -> ScoreMatchResponse:
+    """Score how well a job fits as a part-time / evenings-and-weekends side gig.
+
+    Runs the AI ``score_match`` feature (Claude, structured output), then persists
+    the score / reasons / part-time flag on the job and logs the call to ``ai_run``.
+    Scoring weighs availability (workload / weekly hours / duration) above skill
+    match, so a full_time-leaning posting lands low. A missing API key returns 503
+    and an upstream failure 502 (both handled centrally); on either error the job
+    is left unscored because ``score_match`` raises before any column is written.
+    """
+    job = db.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found.")
+
+    match = score_match(db, job)
+
+    job.match_score = match.score
+    job.match_reasons = match.reasons
+    job.match_part_time_fit = match.part_time_fit
+    job.match_scored_at = datetime.now(timezone.utc)
+    db.commit()
+
+    return ScoreMatchResponse(
+        job_id=job_id,
+        score=match.score,
+        reasons=match.reasons,
+        part_time_fit=match.part_time_fit,
+        model=match.result.model,
+        cost_usd=match.result.cost_usd,
+        run_id=match.result.run.id,
+    )
 
 
 @router.post(

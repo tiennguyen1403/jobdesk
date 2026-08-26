@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     Float,
     Integer,
@@ -64,6 +65,17 @@ class Job(Base):
     )
 
     raw: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+
+    # --- AI match scoring (score_match) ---
+    # All nullable: NULL means "not scored yet", distinct from a scored 0. The
+    # AI weighs the part-time / evenings-and-weekends fit, so a full_time-leaning
+    # job lands low even when its skills match. Re-scoring overwrites in place.
+    match_score: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 0–100
+    match_reasons: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
+    match_part_time_fit: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    match_scored_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # --- Bookkeeping ---
     created_at: Mapped[datetime] = mapped_column(

@@ -100,6 +100,11 @@ class JobRead(BaseModel):
     skills: list[str]
     client_country: str | None = None
     posted_at: datetime | None = None
+    # --- AI match scoring (score_match); null until the job is scored ---
+    match_score: int | None = None
+    match_reasons: list[str] | None = None
+    match_part_time_fit: bool | None = None
+    match_scored_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
     application: ApplicationRead | None = None
