@@ -12,3 +12,6 @@ anthropic>=1.0,<2.0
 # --- Tests (Phase 1+) ---
 pytest>=8.0,<9.0
 httpx>=0.27,<0.29   # required by fastapi.testclient.TestClient
+
+# --- Lint (matches CI) ---
+ruff>=0.6,<1.0   # so `docker compose exec api ruff check .` works locally, like CI
