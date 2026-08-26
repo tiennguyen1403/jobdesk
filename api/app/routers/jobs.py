@@ -39,7 +39,7 @@ def create_job(payload: JobCreate, db: Session = Depends(get_db)) -> Job:
     normalized = _provider.fetch(payload.model_dump(mode="json"))
     if not normalized:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="No job to create."
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="No job to create."
         )
 
     job = Job(source=_provider.key, **normalized[0].model_dump())
@@ -170,7 +170,7 @@ def _resolve_base_cv(db: Session, base_cv_id: int | None) -> Cv:
             )
         if cv.job_id is not None:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=f"CV {base_cv_id} is tailored for job {cv.job_id}, not a base CV.",
             )
         return cv
