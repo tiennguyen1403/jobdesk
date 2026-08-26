@@ -3,6 +3,7 @@ from .ai import AiRunRead, SmokeRequest, SmokeResponse
 from .application import ApplicationCard, ApplicationUpdate, JobSummary
 from .cv import CvBase, CvCreate, CvRead, CvUpdate
 from .job import ApplicationRead, JobBase, JobCreate, JobRead, JobUpdate
+from .proposal import ProposalBase, ProposalCreate, ProposalRead, ProposalUpdate
 
 __all__ = [
     "AiRunRead",
@@ -18,6 +19,10 @@ __all__ = [
     "JobRead",
     "JobSummary",
     "JobUpdate",
+    "ProposalBase",
+    "ProposalCreate",
+    "ProposalRead",
+    "ProposalUpdate",
     "SmokeRequest",
     "SmokeResponse",
 ]
