@@ -4,7 +4,16 @@ from fastapi.responses import JSONResponse
 
 from .ai import AIConfigError, AIServiceError
 from .config import settings
-from .routers import ai, applications, cvs, health, jobs, proposals, upwork
+from .routers import (
+    ai,
+    applications,
+    cvs,
+    health,
+    jobs,
+    proposals,
+    saved_searches,
+    upwork,
+)
 from .services.upwork_oauth import UpworkConfigError, UpworkServiceError
 
 app = FastAPI(title=settings.app_name)
@@ -51,6 +60,7 @@ app.include_router(jobs.router, prefix="/api")
 app.include_router(applications.router, prefix="/api")
 app.include_router(cvs.router, prefix="/api")
 app.include_router(proposals.router, prefix="/api")
+app.include_router(saved_searches.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 app.include_router(upwork.router, prefix="/api")
 
