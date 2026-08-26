@@ -5,11 +5,17 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from ..ai import score_match, tailor_cv
+from ..ai import draft_proposal, score_match, tailor_cv
 from ..db import get_db
-from ..models import Application, ApplicationStatus, Cv, Job
+from ..models import Application, ApplicationStatus, Cv, Job, Proposal
 from ..providers import ManualProvider
-from ..schemas.ai import ScoreMatchResponse, TailorCvRequest, TailorCvResponse
+from ..schemas.ai import (
+    DraftProposalRequest,
+    DraftProposalResponse,
+    ScoreMatchResponse,
+    TailorCvRequest,
+    TailorCvResponse,
+)
 from ..schemas.application import ApplicationCard
 from ..schemas.job import JobCreate, JobRead, JobUpdate
 
@@ -228,6 +234,88 @@ def tailor_job_cv(
         model=tailored.result.model,
         cost_usd=tailored.result.cost_usd,
         run_id=tailored.result.run.id,
+    )
+
+
+def _resolve_proposal_cv(db: Session, job: Job, cv_id: int | None) -> Cv | None:
+    """Choose the CV to ground a proposal in, or ``None`` to draft without one.
+
+    With ``cv_id``: it must exist (404); any CV is allowed — a base CV or one
+    already tailored for this job. Without it, auto-pick the most useful CV: the
+    newest CV tailored for THIS job (from ``tailor_cv``), else the newest base CV,
+    else ``None``. Unlike tailoring — which needs a base CV — a proposal can be
+    drafted with no CV at all, so a missing CV is not an error here.
+    """
+    if cv_id is not None:
+        cv = db.get(Cv, cv_id)
+        if cv is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="CV not found.")
+        return cv
+
+    # Prefer a CV already tailored for this job; fall back to the newest base CV.
+    tailored = db.scalars(
+        select(Cv)
+        .where(Cv.job_id == job.id)
+        .order_by(Cv.created_at.desc(), Cv.id.desc())
+        .limit(1)
+    ).first()
+    if tailored is not None:
+        return tailored
+
+    return db.scalars(
+        select(Cv)
+        .where(Cv.job_id.is_(None))
+        .order_by(Cv.created_at.desc(), Cv.id.desc())
+        .limit(1)
+    ).first()
+
+
+@router.post(
+    "/{job_id}/draft-proposal",
+    response_model=DraftProposalResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def draft_job_proposal(
+    job_id: int,
+    payload: DraftProposalRequest | None = None,
+    db: Session = Depends(get_db),
+) -> DraftProposalResponse:
+    """Draft a proposal for a job and save it as an editable ``proposal`` row.
+
+    Grounds the proposal in a CV (``cv_id`` from the body if given, else the CV
+    already tailored for this job, else the newest base CV, else none), runs the AI
+    ``draft_proposal`` feature (Claude, markdown prose), and persists the result as
+    a new ``proposal`` row — editable afterward via the proposal endpoints. The
+    call is logged to ``ai_run``.
+
+    JobDesk NEVER submits: this only drafts. The proposal is reviewed, edited, and
+    applied manually on the platform.
+
+    404 if the job (or a given ``cv_id``) is unknown — both checked before the paid
+    AI call. A missing API key returns 503 and an upstream failure 502 (both handled
+    centrally); on either AI error nothing is saved.
+    """
+    job = db.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found.")
+
+    cv = _resolve_proposal_cv(db, job, payload.cv_id if payload else None)
+
+    drafted = draft_proposal(db, job, cv)
+
+    proposal = Proposal(job_id=job.id, content=drafted.content)
+    db.add(proposal)
+    db.commit()
+    db.refresh(proposal)
+
+    return DraftProposalResponse(
+        job_id=job.id,
+        proposal_id=proposal.id,
+        cv_id=cv.id if cv is not None else None,
+        content=proposal.content,
+        model=drafted.result.model,
+        cost_usd=drafted.result.cost_usd,
+        run_id=drafted.result.run.id,
     )
 
 
