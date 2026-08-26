@@ -207,17 +207,26 @@ def call_claude(
 # the shape is guaranteed and never scraped out of prose.
 
 # Reply schema: an integer 0–100, a short list of reasons, and a part-time flag.
+# NOTE: the structured-output (json_schema) validator accepts only structural
+# keywords (type / properties / items / required / additionalProperties /
+# description / enum) and rejects value-constraint keywords with a 400 — both
+# numeric range (``minimum`` / ``maximum``) and array size (``maxItems``). So the
+# bounds live in each field's ``description`` and the system prompt, and are
+# enforced defensively in code: ``_parse_score`` clamps the score to 0–100.
 _SCORE_MATCH_FORMAT: dict[str, Any] = {
     "format": {
         "type": "json_schema",
         "schema": {
             "type": "object",
             "properties": {
-                "score": {"type": "integer", "minimum": 0, "maximum": 100},
+                "score": {
+                    "type": "integer",
+                    "description": "0 to 100; higher = better evenings-and-weekends fit.",
+                },
                 "reasons": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "maxItems": 6,
+                    "description": "2–5 short, concrete reasons citing availability and skill fit.",
                 },
                 "part_time_fit": {"type": "boolean"},
             },
