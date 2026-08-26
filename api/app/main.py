@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 
 from .ai import AIConfigError, AIServiceError
 from .config import settings
-from .routers import ai, applications, health, jobs
+from .routers import ai, applications, cvs, health, jobs
 
 app = FastAPI(title=settings.app_name)
 
@@ -34,6 +34,7 @@ def _ai_service_error(request: Request, exc: AIServiceError) -> JSONResponse:
 app.include_router(health.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api")
 app.include_router(applications.router, prefix="/api")
+app.include_router(cvs.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 
 
