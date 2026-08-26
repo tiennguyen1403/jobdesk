@@ -23,6 +23,20 @@ class AiRunRead(BaseModel):
     created_at: datetime
 
 
+class ScoreMatchResponse(BaseModel):
+    """The score_match result for a job, plus the accounting logged for the call."""
+
+    model_config = ConfigDict(protected_namespaces=())
+
+    job_id: int
+    score: int  # 0–100, higher = better evenings-and-weekends fit
+    reasons: list[str]
+    part_time_fit: bool
+    model: str
+    cost_usd: float
+    run_id: int
+
+
 class SmokeRequest(BaseModel):
     """Optional body for the smoke call; defaults to a trivial ping prompt."""
 
