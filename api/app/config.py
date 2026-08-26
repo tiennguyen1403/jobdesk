@@ -6,7 +6,10 @@ class Settings(BaseSettings):
 
     app_name: str = "JobDesk API"
     database_url: str = "postgresql+psycopg://jobdesk:jobdesk@db:5432/jobdesk"
-    cors_origins: str = "http://localhost:5173"
+    # Comma-separated allowed origins. Includes https://www.upwork.com so the
+    # capture bookmarklet (docs/capture-bookmarklet.md) can POST a scraped job
+    # from an Upwork page. Override via CORS_ORIGINS in .env.
+    cors_origins: str = "http://localhost:5173,https://www.upwork.com"
 
     # Phase 2 — AI layer (Claude via the Anthropic Messages API)
     anthropic_api_key: str | None = None
