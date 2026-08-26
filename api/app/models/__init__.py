@@ -4,5 +4,6 @@ from .application import Application, ApplicationStatus
 from .cv import Cv
 from .job import Job
 from .proposal import Proposal
+from .upwork_token import UpworkToken
 
-__all__ = ["AiRun", "Application", "ApplicationStatus", "Cv", "Job", "Proposal"]
+__all__ = ["AiRun", "Application", "ApplicationStatus", "Cv", "Job", "Proposal", "UpworkToken"]

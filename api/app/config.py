@@ -14,9 +14,17 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-opus-5"
     # Ceiling on generated tokens per call (a cap, not a charge). Callers may override.
     anthropic_max_tokens: int = 4096
-    # Phase 3
+    # Phase 3 — Upwork OAuth2 connector
     upwork_client_id: str | None = None
     upwork_client_secret: str | None = None
+    # OAuth2 redirect (callback) URI. Must match EXACTLY the value registered on
+    # your Upwork app and the API's public URL (host + API_PORT). Defaults to the
+    # example API_PORT (8000); override to match your port (this machine: 8001).
+    upwork_redirect_uri: str = "http://localhost:8000/api/upwork/callback"
+    # Optional OAuth2 scopes (space-separated). Upwork grants the permissions set
+    # on the app, so this is normally empty; when set, it is added to the authorize
+    # URL, otherwise the scope parameter is omitted.
+    upwork_scope: str = ""
 
     @property
     def cors_origins_list(self) -> list[str]:
