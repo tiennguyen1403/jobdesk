@@ -1,10 +1,10 @@
 import type { ReactElement } from 'react'
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import Jobs from './Jobs'
-import { listJobs } from '../lib/api/jobs'
+import { listJobs, type Job } from '../lib/api/jobs'
 
 // Stub the jobs client so the test never hits the network. The fixture lives
 // inside the factory: vi.mock is hoisted above the file, so it must not close
@@ -34,9 +34,40 @@ vi.mock('../lib/api/jobs', () => {
   return {
     listJobs: vi.fn().mockResolvedValue([sampleJob]),
     createJob: vi.fn(),
+    createApplicationForJob: vi.fn().mockResolvedValue({}),
     jobsQueryKey: (filters = {}) => ['jobs', filters],
   }
 })
+
+/** A complete Job for tests that need more than the factory's single fixture. */
+function makeJob(overrides: Partial<Job> = {}): Job {
+  return {
+    id: 1,
+    source: 'manual',
+    external_id: null,
+    url: 'https://www.upwork.com/jobs/~sample',
+    title: 'React dashboard tweaks (evenings)',
+    description: 'Small React + Tailwind fixes.',
+    budget_type: 'hourly',
+    budget_min: 30,
+    budget_max: 50,
+    currency: 'USD',
+    workload: 'part_time',
+    weekly_hours: 10,
+    duration: 'one_to_three_months',
+    skills: [],
+    client_country: 'Germany',
+    posted_at: '2026-08-25T09:00:00Z',
+    match_score: null,
+    match_reasons: null,
+    match_part_time_fit: null,
+    match_scored_at: null,
+    created_at: '2026-08-26T04:27:03Z',
+    updated_at: '2026-08-26T04:27:03Z',
+    application: null,
+    ...overrides,
+  }
+}
 
 function renderWithClient(ui: ReactElement) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -66,5 +97,22 @@ describe('Jobs page', () => {
     renderWithClient(<Jobs />)
     expect(await screen.findByText(/React dashboard tweaks/i)).toBeDefined()
     expect(screen.getByText('React')).toBeDefined()
+  })
+
+  it('filters the visible jobs by source (client-side, no refetch)', async () => {
+    vi.mocked(listJobs).mockResolvedValueOnce([
+      makeJob({ id: 2, source: 'manual', title: 'Manual gig' }),
+      makeJob({ id: 3, source: 'upwork', title: 'Upwork gig' }),
+    ])
+    renderWithClient(<Jobs />)
+
+    // Both sources are visible before the source filter is touched.
+    expect(await screen.findByText('Manual gig')).toBeDefined()
+    expect(screen.getByText('Upwork gig')).toBeDefined()
+
+    // Narrowing to Upwork drops the manual posting from the list.
+    fireEvent.change(screen.getByLabelText(/source/i), { target: { value: 'upwork' } })
+    expect(screen.queryByText('Manual gig')).toBeNull()
+    expect(screen.getByText('Upwork gig')).toBeDefined()
   })
 })
