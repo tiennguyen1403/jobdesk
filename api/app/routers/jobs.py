@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 from ..db import get_db
 from ..models import Application, ApplicationStatus, Job
 from ..providers import ManualProvider
+from ..schemas.application import ApplicationCard
 from ..schemas.job import JobCreate, JobRead, JobUpdate
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -97,6 +98,33 @@ def update_job(job_id: int, payload: JobUpdate, db: Session = Depends(get_db)) -
     db.commit()
     db.refresh(job)
     return job
+
+
+@router.post(
+    "/{job_id}/application",
+    response_model=ApplicationCard,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_application(job_id: int, db: Session = Depends(get_db)) -> Application:
+    """Open a pipeline card for an existing job that has none yet.
+
+    Jobs added via ``POST /api/jobs`` already start with a card, so this covers
+    postings inserted by other providers (capture, Upwork) that arrive without
+    one. The card enters at ``saved`` — JobDesk never auto-applies.
+    """
+    job = db.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found.")
+    if job.application is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Job already has an application."
+        )
+
+    job.application = Application(status=ApplicationStatus.saved)
+    db.add(job)
+    db.commit()
+    db.refresh(job.application)
+    return job.application
 
 
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
