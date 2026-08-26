@@ -7,8 +7,10 @@ from ..models import SavedSearch
 from ..schemas.saved_search import (
     SavedSearchCreate,
     SavedSearchRead,
+    SavedSearchRunResult,
     SavedSearchUpdate,
 )
+from ..services import poller
 
 router = APIRouter(prefix="/saved-searches", tags=["saved-searches"])
 
@@ -100,3 +102,40 @@ def delete_saved_search(search_id: int, db: Session = Depends(get_db)) -> Respon
     db.delete(search)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{search_id}/run", response_model=SavedSearchRunResult)
+def run_saved_search_now(
+    search_id: int, db: Session = Depends(get_db)
+) -> SavedSearchRunResult:
+    """Poll one saved search immediately and return the ingest summary.
+
+    The manual counterpart to the scheduler — useful for testing without waiting a
+    cycle. Runs regardless of the ``enabled`` flag (that gates only the scheduled
+    loop). Ingested jobs land in the Inbox; JobDesk never auto-applies. When Upwork
+    is unconfigured/not connected the underlying call raises, surfacing as a clean
+    503/502 (via the app's exception handlers) rather than a silent no-op; a search
+    whose provider can't be polled is a 422.
+    """
+    search = db.get(SavedSearch, search_id)
+    if search is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Saved search not found."
+        )
+
+    try:
+        summary = poller.run_saved_search(db, search)
+    except poller.PollError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from exc
+
+    return SavedSearchRunResult(
+        search_id=search.id,
+        provider=search.provider,
+        created=summary.created,
+        updated=summary.updated,
+        skipped=summary.skipped,
+        job_ids=summary.affected_ids,
+        last_polled_at=search.last_polled_at,
+    )

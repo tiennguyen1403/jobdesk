@@ -29,6 +29,15 @@ class Settings(BaseSettings):
     # URL, otherwise the scope parameter is omitted.
     upwork_scope: str = ""
 
+    # Phase 3 — polling scheduler (in-process APScheduler, app.scheduler).
+    # Off by default: without a stored Upwork token the poll is a logged no-op, and
+    # POST /api/saved-searches/{id}/run covers testing, so a background loop only
+    # runs when explicitly enabled. Flip POLL_ENABLED=true once Upwork is connected.
+    poll_enabled: bool = False
+    # Minutes between poll cycles (each iterates the enabled saved searches). Kept
+    # gentle — Upwork has no webhooks, but polling need not be aggressive.
+    poll_interval_minutes: int = 15
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

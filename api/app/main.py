@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -15,9 +17,25 @@ from .routers import (
     saved_searches,
     upwork,
 )
+from .scheduler import shutdown_scheduler, start_scheduler
 from .services.upwork_oauth import UpworkConfigError, UpworkServiceError
 
-app = FastAPI(title=settings.app_name)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Start the polling scheduler on boot and stop it on shutdown.
+
+    Gated by ``POLL_ENABLED`` and idempotent, so uvicorn ``--reload`` never
+    double-starts the poll loop (see ``app.scheduler``).
+    """
+    start_scheduler()
+    try:
+        yield
+    finally:
+        shutdown_scheduler()
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
