@@ -1,3 +1,18 @@
-# AI layer (Claude) — Phase 2.
-# service.py: tailor_cv(), draft_proposal(), score_match()
-# prompts/: versioned prompt templates
+"""AI layer: a single Claude entry point with per-call cost logging (Phase 2)."""
+from .service import (
+    AIConfigError,
+    AIError,
+    AIServiceError,
+    ClaudeResult,
+    call_claude,
+    estimate_cost_usd,
+)
+
+__all__ = [
+    "AIConfigError",
+    "AIError",
+    "AIServiceError",
+    "ClaudeResult",
+    "call_claude",
+    "estimate_cost_usd",
+]
