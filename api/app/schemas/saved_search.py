@@ -73,3 +73,20 @@ class SavedSearchRead(BaseModel):
     last_polled_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class SavedSearchRunResult(BaseModel):
+    """The ingest summary from one on-demand poll (POST /api/saved-searches/{id}/run).
+
+    ``created`` / ``updated`` / ``skipped`` mirror the shared ingestion service, so
+    a second run of the same search shows ``created=0`` with the postings deduped
+    into ``updated``. ``last_polled_at`` is the freshly stamped poll time.
+    """
+
+    search_id: int
+    provider: str
+    created: int
+    updated: int
+    skipped: int
+    job_ids: list[int] = Field(default_factory=list)
+    last_polled_at: datetime | None = None

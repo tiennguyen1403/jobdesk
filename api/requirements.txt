@@ -14,6 +14,12 @@ httpx>=0.27,<0.29
 # --- AI (Phase 2) ---
 anthropic>=1.0,<2.0
 
+# --- Polling scheduler (Phase 3) ---
+# In-process BackgroundScheduler started from the FastAPI lifespan; polls enabled
+# saved searches on an interval (app.scheduler, app.services.poller). 3.x line —
+# 4.x is an API-breaking rewrite still stabilizing.
+apscheduler>=3.10,<4.0
+
 # --- Tests (Phase 1+) ---
 pytest>=8.0,<9.0
 

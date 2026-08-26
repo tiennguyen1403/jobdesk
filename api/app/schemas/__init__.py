@@ -17,6 +17,7 @@ from .saved_search import (
     SavedSearchBase,
     SavedSearchCreate,
     SavedSearchRead,
+    SavedSearchRunResult,
     SavedSearchUpdate,
     SearchQuery,
 )
@@ -44,6 +45,7 @@ __all__ = [
     "SavedSearchBase",
     "SavedSearchCreate",
     "SavedSearchRead",
+    "SavedSearchRunResult",
     "SavedSearchUpdate",
     "SearchQuery",
     "ScoreMatchResponse",
