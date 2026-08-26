@@ -5,11 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from ..ai import score_match
+from ..ai import score_match, tailor_cv
 from ..db import get_db
-from ..models import Application, ApplicationStatus, Job
+from ..models import Application, ApplicationStatus, Cv, Job
 from ..providers import ManualProvider
-from ..schemas.ai import ScoreMatchResponse
+from ..schemas.ai import ScoreMatchResponse, TailorCvRequest, TailorCvResponse
 from ..schemas.application import ApplicationCard
 from ..schemas.job import JobCreate, JobRead, JobUpdate
 
@@ -134,6 +134,100 @@ def score_job_match(job_id: int, db: Session = Depends(get_db)) -> ScoreMatchRes
         model=match.result.model,
         cost_usd=match.result.cost_usd,
         run_id=match.result.run.id,
+    )
+
+
+# Keep a tailored CV's label readable when a posting has a very long title.
+_TAILORED_LABEL_TITLE_CAP = 80
+
+
+def _tailored_cv_label(job: Job) -> str:
+    """A human label for a job's tailored CV, e.g. 'Tailored — Weekend React gig'."""
+    title = (job.title or "").strip() or f"job {job.id}"
+    if len(title) > _TAILORED_LABEL_TITLE_CAP:
+        title = title[:_TAILORED_LABEL_TITLE_CAP].rstrip() + "…"
+    return f"Tailored — {title}"
+
+
+def _resolve_base_cv(db: Session, base_cv_id: int | None) -> Cv:
+    """Return the base/master CV to tailor from, or raise a clear HTTP error.
+
+    With ``base_cv_id``: it must exist (404) and be a base CV — ``job_id`` IS NULL
+    (422) — not an already-tailored variant. Without it: the most recently created
+    base CV, or 400 if none exists yet (the DoD's 'clear error if no base CV').
+    """
+    if base_cv_id is not None:
+        cv = db.get(Cv, base_cv_id)
+        if cv is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Base CV not found."
+            )
+        if cv.job_id is not None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"CV {base_cv_id} is tailored for job {cv.job_id}, not a base CV.",
+            )
+        return cv
+
+    cv = db.scalars(
+        select(Cv)
+        .where(Cv.job_id.is_(None))
+        .order_by(Cv.created_at.desc(), Cv.id.desc())
+        .limit(1)
+    ).first()
+    if cv is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No base CV found. Create a base CV (a CV with no job_id) before tailoring.",
+        )
+    return cv
+
+
+@router.post(
+    "/{job_id}/tailor-cv",
+    response_model=TailorCvResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def tailor_job_cv(
+    job_id: int,
+    payload: TailorCvRequest | None = None,
+    db: Session = Depends(get_db),
+) -> TailorCvResponse:
+    """Tailor the base/master CV to a job and save it as a tailored ``cv`` row.
+
+    Reads a base CV (``base_cv_id`` from the body if given, else the newest base CV
+    — a CV with no ``job_id``), runs the AI ``tailor_cv`` feature (Claude, structured
+    markdown), and persists the result as a new ``cv`` row with ``job_id`` set. The
+    call is logged to ``ai_run``.
+
+    Everything that can be rejected cheaply is checked *before* the paid AI call:
+    404 if the job is unknown, 400 if no base CV exists yet, and 404 / 422 if a
+    given ``base_cv_id`` is missing or is not a base CV. A missing API key returns
+    503 and an upstream failure 502 (both handled centrally); on either AI error
+    nothing is saved.
+    """
+    job = db.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found.")
+
+    base_cv = _resolve_base_cv(db, payload.base_cv_id if payload else None)
+
+    tailored = tailor_cv(db, base_cv, job)
+
+    cv = Cv(label=_tailored_cv_label(job), content=tailored.content, job_id=job.id)
+    db.add(cv)
+    db.commit()
+    db.refresh(cv)
+
+    return TailorCvResponse(
+        job_id=job.id,
+        cv_id=cv.id,
+        base_cv_id=base_cv.id,
+        label=cv.label,
+        content=cv.content,
+        model=tailored.result.model,
+        cost_usd=tailored.result.cost_usd,
+        run_id=tailored.result.run.id,
     )
 
 

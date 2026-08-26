@@ -345,3 +345,86 @@ def score_match(db: Session, job: Any, *, model: str | None = None) -> MatchScor
     )
     score, reasons, part_time_fit = _parse_score(result.text)
     return MatchScore(score=score, reasons=reasons, part_time_fit=part_time_fit, result=result)
+
+
+# --- tailor_cv: rewrite the base CV to emphasize a job's relevant skills ------
+#
+# Unlike score_match, the output is not structured JSON but the CV document
+# itself — well-formed **markdown** that is saved verbatim into a ``cv`` row. So
+# there is no ``output_config``; the shape is prose, guided by the system prompt.
+# The part-time scope is enforced in the prompt (frame for evenings/weekends,
+# never imply full-time), and the model is told to tailor truthfully — reorder
+# and emphasize what the base CV already supports, never invent experience.
+
+_TAILOR_CV_SYSTEM = (
+    "You tailor a freelancer's master CV to one specific freelance job.\n\n"
+    "Rewrite and re-order the CV so the skills, experience, and achievements most "
+    "relevant to THIS job lead. Keep it strictly truthful: you may rephrase, "
+    "prioritize, trim, and emphasize, but you must NEVER invent employers, job "
+    "titles, dates, skills, certifications, or achievements that the base CV does "
+    "not already support.\n\n"
+    "This freelancer only takes part-time, hourly, or project-based side work in the "
+    "evenings and on weekends — never a full-time role. Frame availability and "
+    "positioning accordingly and do not imply full-time availability.\n\n"
+    "Return ONLY the tailored CV as clean, well-structured Markdown: use headings "
+    "(## / ###), short paragraphs, and bullet lists. Begin directly with the CV — "
+    "no preamble, no closing commentary, and no surrounding code fences."
+)
+
+# A CV is a document, not a one-line verdict: give adaptive thinking and the full
+# CV room so the markdown is never truncated mid-section. The foundation's 4096
+# default is tuned for short structured replies (e.g. score_match), so raise it.
+_TAILOR_CV_MAX_TOKENS = 8000
+
+# Bound the base CV the same way _job_facts bounds a job description, so one huge
+# pasted CV can't blow up token cost.
+_BASE_CV_CHAR_CAP = 12000
+
+
+@dataclass
+class TailoredCv:
+    """A job-tailored CV (structured markdown) plus the call's accounting."""
+
+    content: str
+    result: ClaudeResult
+
+
+def tailor_cv(db: Session, base_cv: Any, job: Any, *, model: str | None = None) -> TailoredCv:
+    """Tailor ``base_cv`` to ``job`` with Claude and log the run to ``ai_run``.
+
+    ``base_cv`` supplies the source (its ``content`` markdown) and ``job`` the
+    target, rendered via :func:`_job_facts` so the part-time availability signals
+    (workload / weekly hours / duration) reach the model. The reply is a complete
+    tailored CV in markdown, returned as-is for the caller to persist as a
+    tailored ``cv`` row (``feature='tailor_cv'``, linked to the job).
+
+    Propagates :class:`AIConfigError` (503) and :class:`AIServiceError` (502)
+    unchanged. An empty reply is surfaced as a 502 rather than silently saved as a
+    blank CV.
+    """
+    base_content = (getattr(base_cv, "content", None) or "").strip()
+    if len(base_content) > _BASE_CV_CHAR_CAP:
+        base_content = base_content[:_BASE_CV_CHAR_CAP] + " …[truncated]"
+
+    prompt = (
+        "Tailor this freelancer's master CV to the target job below. Emphasize the "
+        "skills and experience relevant to the job, stay truthful to the master CV, "
+        "and keep the part-time / evenings-and-weekends scope in mind.\n\n"
+        "=== MASTER CV (Markdown) ===\n"
+        f"{base_content or '(the master CV is empty)'}\n\n"
+        "=== TARGET JOB ===\n"
+        f"{_job_facts(job)}"
+    )
+    result = call_claude(
+        db,
+        feature="tailor_cv",
+        prompt=prompt,
+        system=_TAILOR_CV_SYSTEM,
+        model=model,
+        max_tokens=_TAILOR_CV_MAX_TOKENS,
+        job_id=getattr(job, "id", None),
+    )
+    content = result.text.strip()
+    if not content:
+        raise AIServiceError("tailor_cv returned empty content.")
+    return TailoredCv(content=content, result=result)

@@ -37,6 +37,31 @@ class ScoreMatchResponse(BaseModel):
     run_id: int
 
 
+class TailorCvRequest(BaseModel):
+    """Optional body for POST /api/jobs/{id}/tailor-cv.
+
+    ``base_cv_id`` chooses which base/master CV to tailor from; omit it (or send an
+    empty body) to use the most recently created base CV.
+    """
+
+    base_cv_id: int | None = None
+
+
+class TailorCvResponse(BaseModel):
+    """The tailor_cv result: the saved tailored CV plus the call's accounting."""
+
+    model_config = ConfigDict(protected_namespaces=())
+
+    job_id: int
+    cv_id: int  # the new tailored cv row
+    base_cv_id: int  # the base CV it was tailored from
+    label: str
+    content: str  # the tailored CV, as structured markdown
+    model: str
+    cost_usd: float
+    run_id: int
+
+
 class SmokeRequest(BaseModel):
     """Optional body for the smoke call; defaults to a trivial ping prompt."""
 

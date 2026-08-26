@@ -1,5 +1,12 @@
 # Pydantic request/response schemas — added in Phase 1.
-from .ai import AiRunRead, ScoreMatchResponse, SmokeRequest, SmokeResponse
+from .ai import (
+    AiRunRead,
+    ScoreMatchResponse,
+    SmokeRequest,
+    SmokeResponse,
+    TailorCvRequest,
+    TailorCvResponse,
+)
 from .application import ApplicationCard, ApplicationUpdate, JobSummary
 from .cv import CvBase, CvCreate, CvRead, CvUpdate
 from .job import ApplicationRead, JobBase, JobCreate, JobRead, JobUpdate
@@ -26,4 +33,6 @@ __all__ = [
     "ScoreMatchResponse",
     "SmokeRequest",
     "SmokeResponse",
+    "TailorCvRequest",
+    "TailorCvResponse",
 ]
