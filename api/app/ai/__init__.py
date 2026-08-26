@@ -5,9 +5,11 @@ from .service import (
     AIServiceError,
     ClaudeResult,
     MatchScore,
+    TailoredCv,
     call_claude,
     estimate_cost_usd,
     score_match,
+    tailor_cv,
 )
 
 __all__ = [
@@ -16,7 +18,9 @@ __all__ = [
     "AIServiceError",
     "ClaudeResult",
     "MatchScore",
+    "TailoredCv",
     "call_claude",
     "estimate_cost_usd",
     "score_match",
+    "tailor_cv",
 ]
