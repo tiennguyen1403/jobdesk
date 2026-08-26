@@ -3,6 +3,7 @@ import Dashboard from './pages/Dashboard'
 import Jobs from './pages/Jobs'
 import Pipeline from './pages/Pipeline'
 import Studio from './pages/Studio'
+import AiRuns from './pages/AiRuns'
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
   `text-sm transition-colors ${
@@ -28,6 +29,9 @@ export default function App() {
               <NavLink to="/pipeline" className={navClass}>
                 Pipeline
               </NavLink>
+              <NavLink to="/ai-runs" className={navClass}>
+                AI Runs
+              </NavLink>
             </nav>
           </div>
           <span className="rounded-full bg-slate-800 px-3 py-1 font-mono text-xs text-slate-400">
@@ -41,6 +45,7 @@ export default function App() {
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/pipeline" element={<Pipeline />} />
           <Route path="/studio/:jobId" element={<Studio />} />
+          <Route path="/ai-runs" element={<AiRuns />} />
         </Routes>
       </main>
     </div>
