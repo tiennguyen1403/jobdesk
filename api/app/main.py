@@ -11,6 +11,7 @@ from .routers import (
     applications,
     capture,
     cvs,
+    freelancer,
     health,
     jobs,
     proposals,
@@ -18,6 +19,7 @@ from .routers import (
     upwork,
 )
 from .scheduler import shutdown_scheduler, start_scheduler
+from .services.freelancer_oauth import FreelancerConfigError, FreelancerServiceError
 from .services.upwork_oauth import UpworkConfigError, UpworkServiceError
 
 
@@ -74,6 +76,20 @@ def _upwork_service_error(request: Request, exc: UpworkServiceError) -> JSONResp
     return JSONResponse(status_code=status.HTTP_502_BAD_GATEWAY, content={"detail": str(exc)})
 
 
+@app.exception_handler(FreelancerConfigError)
+def _freelancer_config_error(request: Request, exc: FreelancerConfigError) -> JSONResponse:
+    """Freelancer not configured (missing client id/secret) → 503, never a 500."""
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content={"detail": str(exc)}
+    )
+
+
+@app.exception_handler(FreelancerServiceError)
+def _freelancer_service_error(request: Request, exc: FreelancerServiceError) -> JSONResponse:
+    """A Freelancer token call failed upstream (or there's nothing to refresh) → 502."""
+    return JSONResponse(status_code=status.HTTP_502_BAD_GATEWAY, content={"detail": str(exc)})
+
+
 app.include_router(health.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api")
 app.include_router(applications.router, prefix="/api")
@@ -82,6 +98,7 @@ app.include_router(proposals.router, prefix="/api")
 app.include_router(saved_searches.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 app.include_router(upwork.router, prefix="/api")
+app.include_router(freelancer.router, prefix="/api")
 app.include_router(capture.router, prefix="/api")
 
 

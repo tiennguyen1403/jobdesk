@@ -36,6 +36,21 @@ class Settings(BaseSettings):
     # URL, otherwise the scope parameter is omitted.
     upwork_scope: str = ""
 
+    # Phase 4 — Freelancer.com OAuth2 connector. A deliberate sibling of the Upwork
+    # settings above: a separate token store + service, so the two connectors never
+    # interfere. Freelancer splits OAuth across two hosts — authorize on
+    # www.freelancer.com, token on accounts.freelancer.com (see freelancer_oauth).
+    freelancer_client_id: str | None = None
+    freelancer_client_secret: str | None = None
+    # OAuth2 redirect (callback) URI. Must match EXACTLY the value registered on
+    # your Freelancer app and the API's public URL (host + API_PORT). Defaults to
+    # the example API_PORT (8000); override to match your port (this machine: 8001).
+    freelancer_redirect_uri: str = "http://localhost:8000/api/freelancer/callback"
+    # OAuth2 scopes (space-separated). Freelancer's authorize page grants what this
+    # requests; 'basic' is the minimal read scope and a sensible default. Widen it
+    # if the downstream provider needs more; an empty value omits the parameter.
+    freelancer_scope: str = "basic"
+
     # Phase 3 — polling scheduler (in-process APScheduler, app.scheduler).
     # Off by default: without a stored Upwork token the poll is a logged no-op, and
     # POST /api/saved-searches/{id}/run covers testing, so a background loop only
