@@ -25,6 +25,22 @@ vi.mock('../lib/api/upwork', () => ({
   upworkStatusQueryKey: () => ['upwork', 'status'],
 }))
 
+// Freelancer's client is a sibling of Upwork's; default to configured-but-not-
+// connected so both panels render their Connect link.
+vi.mock('../lib/api/freelancer', () => ({
+  getFreelancerStatus: vi.fn().mockResolvedValue({
+    provider: 'freelancer',
+    connected: false,
+    expired: false,
+    expires_at: null,
+    scope: null,
+    configured: true,
+  }),
+  disconnectFreelancer: vi.fn(),
+  freelancerConnectUrl: () => 'http://api.test/api/freelancer/connect',
+  freelancerStatusQueryKey: () => ['freelancer', 'status'],
+}))
+
 vi.mock('../lib/api/savedSearches', () => {
   const searches = [
     {
@@ -61,11 +77,16 @@ vi.mock('../lib/api/savedSearches', () => {
   }
 })
 
-// Surfaces the live `upwork` query param so a test can assert the OAuth params
-// were stripped from the URL after the banner rendered. '∅' = param absent.
-function UpworkParamProbe() {
+// Surfaces the live OAuth query params so a test can assert they were stripped
+// from the URL after the banner rendered. '∅' = param absent.
+function ParamProbe() {
   const [params] = useSearchParams()
-  return <span data-testid="upwork-param">{params.get('upwork') ?? '∅'}</span>
+  return (
+    <>
+      <span data-testid="upwork-param">{params.get('upwork') ?? '∅'}</span>
+      <span data-testid="freelancer-param">{params.get('freelancer') ?? '∅'}</span>
+    </>
+  )
 }
 
 function renderPage(
@@ -77,7 +98,7 @@ function renderPage(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={initialEntries}>
         {ui}
-        <UpworkParamProbe />
+        <ParamProbe />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -162,5 +183,46 @@ describe('Sources page', () => {
     renderPage(<Sources />, { initialEntries: ['/sources?upwork=error&reason=denied'] })
     expect(await screen.findByText(/declined the upwork authorization/i)).toBeDefined()
     await waitFor(() => expect(screen.getByTestId('upwork-param').textContent).toBe('∅'))
+  })
+
+  it('offers a Connect link to the Freelancer OAuth flow when configured but not connected', async () => {
+    renderPage()
+    const link = (await screen.findByRole('link', {
+      name: /connect freelancer/i,
+    })) as HTMLAnchorElement
+    expect(link.getAttribute('href')).toBe('http://api.test/api/freelancer/connect')
+  })
+
+  it('shows a success banner and strips the param after ?freelancer=connected', async () => {
+    renderPage(<Sources />, { initialEntries: ['/sources?freelancer=connected'] })
+    expect(await screen.findByText(/freelancer connected/i)).toBeDefined()
+    await waitFor(() => expect(screen.getByTestId('freelancer-param').textContent).toBe('∅'))
+  })
+
+  it('shows a reason-derived error banner and strips the param on ?freelancer=error', async () => {
+    renderPage(<Sources />, { initialEntries: ['/sources?freelancer=error&reason=denied'] })
+    expect(await screen.findByText(/declined the freelancer authorization/i)).toBeDefined()
+    await waitFor(() => expect(screen.getByTestId('freelancer-param').textContent).toBe('∅'))
+  })
+
+  it('lets the saved-search form target the Freelancer provider', async () => {
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: /new search/i }))
+    // Both sources are selectable; Freelancer is a first-class option.
+    expect(screen.getByRole('option', { name: /freelancer/i })).toBeDefined()
+    fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'Weekend Django' } })
+    fireEvent.change(screen.getByRole('combobox', { name: /source/i }), {
+      target: { value: 'freelancer' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /create search/i }))
+    await waitFor(() =>
+      expect(vi.mocked(createSavedSearch)).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Weekend Django',
+          provider: 'freelancer',
+          query: expect.objectContaining({ workload: 'part_time' }),
+        }),
+      ),
+    )
   })
 })
