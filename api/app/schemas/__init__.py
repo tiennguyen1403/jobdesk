@@ -9,6 +9,16 @@ from .ai import (
     TailorCvRequest,
     TailorCvResponse,
 )
+from .analytics import (
+    AiAnalytics,
+    AiDailySpend,
+    AiFeatureCost,
+    AnalyticsSummary,
+    JobsAnalytics,
+    MatchAnalytics,
+    MatchBands,
+    PipelineAnalytics,
+)
 from .application import ApplicationCard, ApplicationUpdate, JobSummary
 from .cv import CvBase, CvCreate, CvRead, CvUpdate
 from .job import ApplicationRead, JobBase, JobCreate, JobRead, JobUpdate
@@ -23,7 +33,11 @@ from .saved_search import (
 )
 
 __all__ = [
+    "AiAnalytics",
+    "AiDailySpend",
+    "AiFeatureCost",
     "AiRunRead",
+    "AnalyticsSummary",
     "ApplicationCard",
     "ApplicationRead",
     "ApplicationUpdate",
@@ -38,6 +52,10 @@ __all__ = [
     "JobRead",
     "JobSummary",
     "JobUpdate",
+    "JobsAnalytics",
+    "MatchAnalytics",
+    "MatchBands",
+    "PipelineAnalytics",
     "ProposalBase",
     "ProposalCreate",
     "ProposalRead",
