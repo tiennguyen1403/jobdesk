@@ -30,7 +30,8 @@ from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
 from ..models import SavedSearch
-from ..providers import JobProvider, NormalizedJob, UpworkProvider
+from ..providers import FreelancerProvider, JobProvider, NormalizedJob, UpworkProvider
+from .freelancer_oauth import FreelancerError
 from .ingest import IngestSummary, ingest_jobs
 from .upwork_oauth import UpworkError
 
@@ -45,15 +46,25 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+# The pollable providers, keyed by their provider name. A dict so a new polled
+# source drops in with one entry and no caller changes. Each is stateful (it reads
+# the stored OAuth token), so it is built per call with the session.
+_POLLABLE_PROVIDERS: dict[str, type[JobProvider]] = {
+    UpworkProvider.key: UpworkProvider,
+    FreelancerProvider.key: FreelancerProvider,
+}
+
+
 def _provider_for(search: SavedSearch, db: Session) -> JobProvider:
     """Resolve the provider a saved search runs against.
 
-    Only Upwork is pollable today; the registry is a dict so a second polled
-    source drops in without touching callers. A stateful provider (Upwork reads
-    the stored OAuth token) is built per call with the session.
+    Upwork and Freelancer are pollable today; the registry is a dict so a third
+    polled source drops in without touching callers. A stateful provider (each
+    reads its stored OAuth token) is built per call with the session.
     """
-    if search.provider == UpworkProvider.key:
-        return UpworkProvider(db)
+    provider_cls = _POLLABLE_PROVIDERS.get(search.provider)
+    if provider_cls is not None:
+        return provider_cls(db)
     raise PollError(
         f"Saved search {search.id} uses provider {search.provider!r}, "
         "which cannot be polled."
@@ -149,7 +160,7 @@ def poll_searches(db: Session, *, provider: str | None = None) -> list[PollRun]:
         try:
             summary = run_saved_search(db, search)
             runs.append(PollRun(search.id, search.name, search.provider, summary=summary))
-        except (UpworkError, PollError) as exc:
+        except (UpworkError, FreelancerError, PollError) as exc:
             # Expected, recoverable no-ops (not connected / not pollable): info-level.
             db.rollback()
             log.info(

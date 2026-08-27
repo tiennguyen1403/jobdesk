@@ -16,13 +16,15 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app import scheduler
 from app.config import settings
 from app.models import Job, SavedSearch
-from app.providers import JobProvider, NormalizedJob
+from app.providers import FreelancerProvider, JobProvider, NormalizedJob, UpworkProvider
 from app.services import poller
+from app.services.freelancer_oauth import FreelancerServiceError
 from app.services.upwork_oauth import UpworkServiceError
 
 
@@ -163,6 +165,24 @@ def test_run_now_not_connected_surfaces_502(client: TestClient, db_session, monk
     assert client.post(f"/api/saved-searches/{search.id}/run").status_code == 502
 
 
+# --- provider registry: which providers a saved search can be polled against --
+
+
+def test_provider_for_resolves_pollable_providers(db_session) -> None:
+    # The real registry (not the test stub) routes each provider name to its class.
+    upwork = _make_search(db_session, provider="upwork")
+    freelancer = _make_search(db_session, provider="freelancer")
+
+    assert isinstance(poller._provider_for(upwork, db_session), UpworkProvider)
+    assert isinstance(poller._provider_for(freelancer, db_session), FreelancerProvider)
+
+
+def test_provider_for_unknown_provider_raises_poll_error(db_session) -> None:
+    search = _make_search(db_session, provider="manual")
+    with pytest.raises(poller.PollError):
+        poller._provider_for(search, db_session)
+
+
 # --- part-time scope enforced at the ingest choke point ----------------------
 
 
@@ -225,6 +245,21 @@ def test_poll_searches_provider_error_is_a_noop(db_session, monkeypatch) -> None
     assert "not connected" in runs[0].skipped_reason
     # Nothing ingested, and the failed attempt left last_polled_at untouched.
     assert _jobs(db_session, {"u1", "u2"}) == []
+    db_session.expire(search)
+    assert search.last_polled_at is None
+
+
+def test_poll_searches_freelancer_error_is_a_noop(db_session, monkeypatch) -> None:
+    # A Freelancer provider error is an expected no-op too (info-level, cycle carries
+    # on) — not the noisy generic-exception path.
+    search = _make_search(db_session, provider="freelancer")
+    _use_provider(monkeypatch, _StubProvider(error=FreelancerServiceError("not connected")))
+
+    runs = poller.poll_searches(db_session)
+
+    assert len(runs) == 1
+    assert runs[0].ok is False
+    assert "not connected" in runs[0].skipped_reason
     db_session.expire(search)
     assert search.last_polled_at is None
 
