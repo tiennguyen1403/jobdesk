@@ -120,14 +120,13 @@ def test_callback_exchanges_code_and_stores_tokens(
         params={"code": "the-code", "state": state},
         follow_redirects=False,
     )
-    assert resp.status_code == 200, resp.text
-    body = resp.json()
-    assert body["connected"] is True
-    assert body["expired"] is False
-    assert body["expires_at"] is not None
-    # Secrets never cross the API boundary.
-    assert "access_token" not in body
-    assert "refresh_token" not in body
+    # The callback is a browser endpoint: it redirects back into the SPA, not JSON.
+    assert resp.status_code == 302, resp.text
+    location = resp.headers["location"]
+    assert location == f"{settings.web_base_url.rstrip('/')}/sources?upwork=connected"
+    # Secrets never cross the API boundary — including the redirect target.
+    assert "access_token" not in location
+    assert "refresh_token" not in location
 
     # The exchange hit the confirmed token URL with the authorization-code grant.
     assert captured["url"] == "https://www.upwork.com/api/v3/oauth2/token"
@@ -157,22 +156,35 @@ def test_callback_rejects_mismatched_state_without_calling_upwork(
         params={"code": "x", "state": "not-the-real-state"},
         follow_redirects=False,
     )
-    assert resp.status_code == 400
+    # Redirect back to the SPA with an error flag — the token endpoint was never hit.
+    assert resp.status_code == 302
+    assert (
+        resp.headers["location"]
+        == f"{settings.web_base_url.rstrip('/')}/sources?upwork=error&reason=state"
+    )
     assert client.get("/api/upwork/status").json()["connected"] is False
 
 
-def test_callback_with_error_param_is_400(client: TestClient, monkeypatch) -> None:
+def test_callback_with_error_param_redirects_to_error(
+    client: TestClient, monkeypatch
+) -> None:
     _configure(monkeypatch)
     resp = client.get(
         "/api/upwork/callback",
         params={"error": "access_denied", "error_description": "user denied access"},
         follow_redirects=False,
     )
-    assert resp.status_code == 400
-    assert "access_denied" in resp.json()["detail"] or "denied" in resp.json()["detail"]
+    # A denied grant lands the user back in the app, not on a raw 400 page.
+    assert resp.status_code == 302
+    assert (
+        resp.headers["location"]
+        == f"{settings.web_base_url.rstrip('/')}/sources?upwork=error&reason=denied"
+    )
 
 
-def test_callback_upstream_failure_is_502(client: TestClient, monkeypatch) -> None:
+def test_callback_upstream_failure_redirects_to_error(
+    client: TestClient, monkeypatch
+) -> None:
     _configure(monkeypatch)
     _mock_token_endpoint(
         monkeypatch, lambda req: httpx.Response(400, json={"error": "invalid_grant"})
@@ -183,7 +195,12 @@ def test_callback_upstream_failure_is_502(client: TestClient, monkeypatch) -> No
         params={"code": "bad", "state": state},
         follow_redirects=False,
     )
-    assert resp.status_code == 502
+    # A failed token exchange redirects to the SPA instead of surfacing a raw 502.
+    assert resp.status_code == 302
+    assert (
+        resp.headers["location"]
+        == f"{settings.web_base_url.rstrip('/')}/sources?upwork=error&reason=upstream"
+    )
     # A failed exchange leaves the account not connected.
     assert client.get("/api/upwork/status").json()["connected"] is False
 
