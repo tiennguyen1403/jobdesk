@@ -10,6 +10,13 @@ class Settings(BaseSettings):
     # capture bookmarklet (docs/capture-bookmarklet.md) can POST a scraped job
     # from an Upwork page. Override via CORS_ORIGINS in .env.
     cors_origins: str = "http://localhost:5173,https://www.upwork.com"
+    # The SPA's public base URL. The Upwork OAuth callback is a *browser* endpoint
+    # (Upwork navigates the user's tab to it), so after the exchange it redirects
+    # back here to /sources rather than stranding the user on a raw JSON/error page
+    # — the backend otherwise only knows the API origin. Keep the host+port in sync
+    # with the web dev server (this machine: 5173), exactly as API_PORT is kept in
+    # sync with VITE_API_BASE. Override via WEB_BASE_URL in .env.
+    web_base_url: str = "http://localhost:5173"
 
     # Phase 2 — AI layer (Claude via the Anthropic Messages API)
     anthropic_api_key: str | None = None

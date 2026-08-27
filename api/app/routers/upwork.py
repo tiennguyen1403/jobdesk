@@ -7,15 +7,18 @@ layer (:mod:`app.services.upwork_oauth`) owns the OAuth mechanics and the token
 storage; this router is a thin HTTP surface over it and never exposes a token
 value — only whether one exists and its expiry.
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from urllib.parse import urlencode
+
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
+from ..config import settings
 from ..db import get_db
 from ..models import UpworkToken
 from ..schemas.upwork import UpworkStatus
 from ..services import upwork_oauth
-from ..services.upwork_oauth import UpworkStateError
+from ..services.upwork_oauth import UpworkServiceError, UpworkStateError
 
 router = APIRouter(prefix="/upwork", tags=["upwork"])
 
@@ -45,36 +48,52 @@ def connect(db: Session = Depends(get_db)) -> RedirectResponse:
     return RedirectResponse(url, status_code=307)
 
 
-@router.get(
-    "/callback",
-    dependencies=[Depends(require_upwork_configured)],
-    response_model=UpworkStatus,
-)
+def _sources_redirect(outcome: str, *, reason: str | None = None) -> RedirectResponse:
+    """302-redirect back to the SPA's ``/sources``, tagged with the OAuth outcome.
+
+    302 (Found), not 307: this is an ordinary "now GET this page" navigation — both
+    hops are GETs, so 307's method-preservation buys nothing, and 302 is the
+    idiomatic post-OAuth landing redirect. No token value ever rides in the URL.
+    """
+    params = {"upwork": outcome}
+    if reason:
+        params["reason"] = reason
+    url = f"{settings.web_base_url.rstrip('/')}/sources?{urlencode(params)}"
+    return RedirectResponse(url, status_code=302)
+
+
+@router.get("/callback", dependencies=[Depends(require_upwork_configured)])
 def callback(
     db: Session = Depends(get_db),
     code: str | None = Query(default=None),
     state: str | None = Query(default=None),
     error: str | None = Query(default=None),
     error_description: str | None = Query(default=None),
-) -> UpworkStatus:
-    """Handle Upwork's redirect: validate state, exchange the code, store the tokens.
+) -> RedirectResponse:
+    """Handle Upwork's browser redirect, then land the user back in the SPA.
 
-    A denied authorization (Upwork returns ``error``) or a missing/mismatched
-    ``code`` / ``state`` is a clean **400**; a failed token exchange surfaces as a
-    **502** via the service layer.
+    Upwork navigates the user's tab here, so *every* outcome is a redirect to
+    ``/sources`` — the user never sees raw JSON or a 4xx/5xx page:
+
+    * success → ``?upwork=connected``
+    * denied grant, missing/mismatched ``code``/``state``, or a failed token
+      exchange → ``?upwork=error&reason=<short>``
+
+    The token-exchange mechanics live in :mod:`app.services.upwork_oauth` and are
+    unchanged. An *unconfigured* integration is still a clean **503** from
+    :func:`require_upwork_configured`, which runs before this body.
     """
     if error:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Upwork authorization failed: {error_description or error}",
-        )
+        return _sources_redirect("error", reason="denied")
     if not code:
-        raise HTTPException(status_code=400, detail="Missing 'code' in the Upwork callback.")
+        return _sources_redirect("error", reason="missing_code")
     try:
-        token = upwork_oauth.exchange_code(db, code=code, state=state)
-    except UpworkStateError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return _status(token)
+        upwork_oauth.exchange_code(db, code=code, state=state)
+    except UpworkStateError:
+        return _sources_redirect("error", reason="state")
+    except UpworkServiceError:
+        return _sources_redirect("error", reason="upstream")
+    return _sources_redirect("connected")
 
 
 @router.get(
