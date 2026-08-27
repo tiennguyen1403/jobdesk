@@ -83,5 +83,5 @@ docker compose exec api alembic upgrade head
 - **Phase 0** — Scaffold ✅
 - **Phase 1** — Tracker MVP: Job + Application, list + part-time filter, Kanban ✅ *(v0.1.0)*
 - **Phase 2** — CV/Proposal studio + Claude AI ✅ *(v0.2.0)*
-- **Phase 3** — Upwork API connector (poll saved searches) ← next
-- **Phase 4** — Scale-up (Freelancer.com, analytics)
+- **Phase 3** — Upwork API connector (poll saved searches) ✅ *(v0.3.0)*
+- **Phase 4** — Scale-up (Freelancer.com, analytics) ← next
