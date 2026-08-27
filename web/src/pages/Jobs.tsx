@@ -32,7 +32,9 @@ const INITIAL_FILTERS: JobFiltersValue = {
 function toApiFilters(f: JobFiltersValue, debouncedSearch: string): ApiJobFilters {
   const maxHours = Number(f.maxWeeklyHours)
   return {
-    workload: f.partTime ? 'part_time' : undefined,
+    // The part-time lens means "not full-time" (part_time OR unspecified), so a
+    // provider that posts no workload (e.g. Freelancer) is not hidden by default.
+    exclude_full_time: f.partTime || undefined,
     max_weekly_hours:
       f.maxWeeklyHours.trim() !== '' && !Number.isNaN(maxHours) ? maxHours : undefined,
     budget_type: f.budgetType || undefined,

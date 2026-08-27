@@ -97,6 +97,31 @@ def test_workload_filter_narrows_to_part_time(client: TestClient) -> None:
     assert full["id"] not in ids
 
 
+def test_exclude_full_time_keeps_part_time_and_unknown(client: TestClient) -> None:
+    """The part-time lens keeps part_time AND unknown (NULL) workloads, drops full_time.
+
+    Gig sources like Freelancer post jobs with workload=None (no weekly-hours
+    field); those must still show under the lens — only known full_time is hidden.
+    """
+    part = client.post(
+        "/api/jobs", json=_job_payload(url="https://example.test/jobs/pt2", workload="part_time")
+    ).json()
+    unknown = client.post(
+        "/api/jobs", json=_job_payload(url="https://example.test/jobs/unknown", workload=None)
+    ).json()
+    full = client.post(
+        "/api/jobs", json=_job_payload(url="https://example.test/jobs/ft2", workload="full_time")
+    ).json()
+
+    ids = {
+        job["id"]
+        for job in client.get("/api/jobs", params={"exclude_full_time": "true"}).json()
+    }
+    assert part["id"] in ids
+    assert unknown["id"] in ids  # NULL workload is not full-time -> kept
+    assert full["id"] not in ids
+
+
 def test_max_weekly_hours_filter(client: TestClient) -> None:
     light = client.post(
         "/api/jobs", json=_job_payload(url="https://example.test/jobs/light", weekly_hours=10)

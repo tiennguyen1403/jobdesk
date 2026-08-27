@@ -84,12 +84,12 @@ describe('Jobs page', () => {
     expect(screen.getByRole('heading', { name: /jobs/i })).toBeDefined()
   })
 
-  it('defaults the part-time scope filter to ON and queries with workload=part_time', () => {
+  it('defaults the part-time scope filter to ON and queries with exclude_full_time', () => {
     renderWithClient(<Jobs />)
     const toggle = screen.getByRole('checkbox', { name: /part-time only/i }) as HTMLInputElement
     expect(toggle.checked).toBe(true)
     expect(vi.mocked(listJobs)).toHaveBeenCalledWith(
-      expect.objectContaining({ workload: 'part_time' }),
+      expect.objectContaining({ exclude_full_time: true }),
     )
   })
 

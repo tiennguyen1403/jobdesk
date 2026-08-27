@@ -71,8 +71,14 @@ export interface JobCreate {
 
 /** Jobs-list filters, mirroring the backend query params (the part-time scope). */
 export interface JobFilters {
-  /** Scope guardrail: pass 'part_time' to hide full-time postings. */
+  /** Exact-match a single workload (a precise filter). */
   workload?: Workload
+  /**
+   * Part-time scope lens: keep jobs that are not full-time — part_time OR an
+   * unspecified workload. This is what the "Part-time only" toggle sends, so a
+   * provider that reports no workload (e.g. Freelancer) is not hidden.
+   */
+  exclude_full_time?: boolean
   max_weekly_hours?: number
   budget_type?: BudgetType
   q?: string
@@ -83,6 +89,7 @@ export interface JobFilters {
 function buildQuery(filters: JobFilters): string {
   const params = new URLSearchParams()
   if (filters.workload) params.set('workload', filters.workload)
+  if (filters.exclude_full_time) params.set('exclude_full_time', 'true')
   if (filters.max_weekly_hours != null)
     params.set('max_weekly_hours', String(filters.max_weekly_hours))
   if (filters.budget_type) params.set('budget_type', filters.budget_type)
