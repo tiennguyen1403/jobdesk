@@ -142,6 +142,15 @@ describe('Sources page', () => {
     )
   })
 
+  it('does not offer a full-time option in the saved-search form (part-time scope)', () => {
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: /new search/i }))
+    // The workload select keeps Part-time but never offers Full-time — JobDesk
+    // only ever tracks side gigs.
+    expect(screen.getByRole('option', { name: /part-time/i })).toBeDefined()
+    expect(screen.queryByRole('option', { name: /full-time/i })).toBeNull()
+  })
+
   it('shows a success banner and strips the param after ?upwork=connected', async () => {
     renderPage(<Sources />, { initialEntries: ['/sources?upwork=connected'] })
     expect(await screen.findByText(/upwork connected/i)).toBeDefined()

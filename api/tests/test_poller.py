@@ -163,6 +163,38 @@ def test_run_now_not_connected_surfaces_502(client: TestClient, db_session, monk
     assert client.post(f"/api/saved-searches/{search.id}/run").status_code == 502
 
 
+# --- part-time scope enforced at the ingest choke point ----------------------
+
+
+def test_run_now_never_ingests_full_time_jobs(client: TestClient, db_session, monkeypatch) -> None:
+    # HARD rule: even if a posting comes back full-time, the poll drops it before
+    # ingest — nothing full-time is ever tracked.
+    search = _make_search(db_session)
+    _use_provider(
+        monkeypatch,
+        _StubProvider([_nj("pt1"), _nj("ft1", workload="full_time", weekly_hours=40)]),
+    )
+
+    body = client.post(f"/api/saved-searches/{search.id}/run").json()
+
+    assert (body["created"], body["updated"]) == (1, 0)  # only the part-time one
+    assert {r.external_id for r in _jobs(db_session, {"pt1", "ft1"})} == {"pt1"}
+
+
+def test_run_now_honors_max_weekly_hours_cap(client: TestClient, db_session, monkeypatch) -> None:
+    # A search capped at 15 h/week must drop a 40 h/week posting at ingest.
+    search = _make_search(db_session, query={"keywords": "python", "max_weekly_hours": 15})
+    _use_provider(
+        monkeypatch,
+        _StubProvider([_nj("ok", weekly_hours=10), _nj("over", weekly_hours=40)]),
+    )
+
+    body = client.post(f"/api/saved-searches/{search.id}/run").json()
+
+    assert (body["created"], body["updated"]) == (1, 0)
+    assert {r.external_id for r in _jobs(db_session, {"ok", "over"})} == {"ok"}
+
+
 # --- scheduled cycle: enabled-only, error-isolated ---------------------------
 
 

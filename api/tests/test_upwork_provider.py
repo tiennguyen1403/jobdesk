@@ -190,6 +190,26 @@ def test_fetch_maps_search_results_to_normalized_jobs(db_session, monkeypatch) -
     assert "marketplaceJobPostingsSearch" in captured["json"]["query"]
 
 
+def test_fetch_folds_category_into_search_expression(db_session, monkeypatch) -> None:
+    """A saved search's ``category`` is no longer dropped — it joins ``keywords`` in
+    the one verified ``searchExpression`` filter, so polling actually uses it."""
+    _configure(monkeypatch)
+    _seed_valid_token(db_session)
+
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["json"] = json.loads(request.content.decode())
+        return httpx.Response(200, json=_search_response())
+
+    _mock_graphql(monkeypatch, handler)
+
+    UpworkProvider(db_session).fetch({"keywords": "react", "category": "web development"})
+
+    job_filter = captured["json"]["variables"]["marketPlaceJobFilter"]
+    assert job_filter["searchExpression_eq"] == "react web development"
+
+
 def test_fetch_empty_results_returns_no_jobs(db_session, monkeypatch) -> None:
     _configure(monkeypatch)
     _seed_valid_token(db_session)

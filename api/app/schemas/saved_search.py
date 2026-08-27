@@ -5,9 +5,11 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-# Reuse the job vocabulary (app.schemas.job): JobDesk is part-time only, so a
-# search constrains to the same workload values a job carries.
-Workload = Literal["part_time", "full_time"]
+# JobDesk is part-time only: a saved search may only *target* part-time work — so,
+# unlike a Job (which can carry "full_time"), the search vocabulary omits it and a
+# full_time search is a 422. The poll enforces the scope again at ingest
+# (services.poller._within_scope), which also covers a workload left unset ("any").
+Workload = Literal["part_time"]
 
 
 class SearchQuery(BaseModel):

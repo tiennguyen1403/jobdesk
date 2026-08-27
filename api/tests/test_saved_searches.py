@@ -122,6 +122,16 @@ def test_workload_must_be_valid(client: TestClient) -> None:
     assert resp.status_code == 422, resp.text
 
 
+def test_full_time_saved_search_is_rejected(client: TestClient) -> None:
+    """Scope rule: a search may only target part-time, so 'full_time' is a 422 — the
+    poll can never be pointed at full-time-only work from the API either."""
+    resp = client.post(
+        "/api/saved-searches",
+        json={"name": "no full time", "query": {"workload": "full_time"}},
+    )
+    assert resp.status_code == 422, resp.text
+
+
 def test_negative_max_weekly_hours_rejected(client: TestClient) -> None:
     resp = client.post(
         "/api/saved-searches",

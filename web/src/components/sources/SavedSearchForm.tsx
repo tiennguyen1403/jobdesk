@@ -145,7 +145,6 @@ export default function SavedSearchForm({
             className={fieldClass}
           >
             <option value="part_time">Part-time</option>
-            <option value="full_time">Full-time</option>
             <option value="">Any</option>
           </select>
         </label>
