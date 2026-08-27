@@ -8,9 +8,21 @@ import {
 } from '../../lib/api/savedSearches'
 import type { Workload } from '../../lib/api/jobs'
 
+// The job sources a saved search can target. Both are pollable today (Upwork and
+// Freelancer OAuth connectors); a new source only has to be added here + in the
+// backend poller registry.
+const PROVIDERS = ['upwork', 'freelancer'] as const
+type Provider = (typeof PROVIDERS)[number]
+
+/** Coerce a stored provider string to a known option (unknown → upwork). */
+function toProvider(p: string): Provider {
+  return (PROVIDERS as readonly string[]).includes(p) ? (p as Provider) : 'upwork'
+}
+
 // String-backed form state (empty strings map to "unset" on submit).
 interface FormState {
   name: string
+  provider: Provider
   keywords: string
   category: string
   workload: '' | Workload
@@ -22,6 +34,7 @@ interface FormState {
 // nudges every saved search toward the in-scope, evenings-and-weekends choice.
 const EMPTY: FormState = {
   name: '',
+  provider: 'upwork',
   keywords: '',
   category: '',
   workload: 'part_time',
@@ -33,6 +46,7 @@ const EMPTY: FormState = {
 function fromSearch(s: SavedSearch): FormState {
   return {
     name: s.name,
+    provider: toProvider(s.provider),
     keywords: s.query.keywords ?? '',
     category: s.query.category ?? '',
     workload: s.query.workload ?? '',
@@ -46,6 +60,7 @@ function toPayload(form: FormState): SavedSearchCreate {
   const hours = Number(form.max_weekly_hours)
   return {
     name: form.name.trim(),
+    provider: form.provider,
     enabled: form.enabled,
     query: {
       keywords: form.keywords.trim(),
@@ -124,6 +139,18 @@ export default function SavedSearchForm({
             onChange={(e) => set('keywords', e.target.value)}
             className={fieldClass}
           />
+        </label>
+
+        <label className={labelClass}>
+          Source
+          <select
+            value={form.provider}
+            onChange={(e) => set('provider', e.target.value as Provider)}
+            className={fieldClass}
+          >
+            <option value="upwork">Upwork</option>
+            <option value="freelancer">Freelancer</option>
+          </select>
         </label>
 
         <label className={labelClass}>

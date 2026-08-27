@@ -3,29 +3,41 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { listSavedSearches, savedSearchesQueryKey } from '../lib/api/savedSearches'
 import { upworkStatusQueryKey } from '../lib/api/upwork'
+import { freelancerStatusQueryKey } from '../lib/api/freelancer'
 import UpworkPanel from '../components/sources/UpworkPanel'
+import FreelancerPanel from '../components/sources/FreelancerPanel'
 import SavedSearchForm from '../components/sources/SavedSearchForm'
 import SavedSearchCard from '../components/sources/SavedSearchCard'
 
 type ConnectBanner = { tone: 'success' | 'error'; text: string }
 
+// The OAuth connectors that redirect back to this page. Each (Upwork #70,
+// Freelancer #75) lands with ?<param>=connected or ?<param>=error&reason=<short>;
+// the effect below turns the first match into a banner, refreshes that provider's
+// cached status on success, and strips the params. Adding a provider = one row
+// here plus its panel.
+const OAUTH_PROVIDERS = [
+  { param: 'upwork', label: 'Upwork', statusKey: upworkStatusQueryKey },
+  { param: 'freelancer', label: 'Freelancer', statusKey: freelancerStatusQueryKey },
+] as const
+
 /**
- * Friendly copy for each failure `reason` the Upwork OAuth callback can carry
- * (backend #70): denied · state · upstream · missing_code. Unknown → a safe
- * default so a new backend reason never renders a blank banner.
+ * Friendly copy for each failure `reason` an OAuth callback can carry — denied ·
+ * state · upstream · missing_code, the same set for every connector. Unknown → a
+ * safe default so a new backend reason never renders a blank banner.
  */
-function upworkErrorMessage(reason: string | null): string {
+function oauthErrorMessage(provider: string, reason: string | null): string {
   switch (reason) {
     case 'denied':
-      return 'You declined the Upwork authorization — nothing was connected.'
+      return `You declined the ${provider} authorization — nothing was connected.`
     case 'state':
-      return 'The Upwork sign-in could not be verified (state mismatch). Please try connecting again.'
+      return `The ${provider} sign-in could not be verified (state mismatch). Please try connecting again.`
     case 'upstream':
-      return 'Upwork rejected the connection. Please try again in a moment.'
+      return `${provider} rejected the connection. Please try again in a moment.`
     case 'missing_code':
-      return 'Upwork did not return an authorization code. Please try connecting again.'
+      return `${provider} did not return an authorization code. Please try connecting again.`
     default:
-      return 'Could not connect to Upwork. Please try again.'
+      return `Could not connect to ${provider}. Please try again.`
   }
 }
 
@@ -35,23 +47,25 @@ export default function Sources() {
   const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
 
-  const upwork = searchParams.get('upwork')
-  const reason = searchParams.get('reason')
-
-  // The Upwork OAuth callback (#70) redirects back here with ?upwork=connected
-  // or ?upwork=error&reason=<short>. Turn that into an explicit banner, refresh
-  // the cached connection status on success, then strip the params so a refresh
-  // or back-button doesn't re-show the banner and the address bar stays clean.
+  // Each connector redirects back here with ?<provider>=connected or
+  // ?<provider>=error&reason=<short>. Turn the first match into an explicit
+  // banner, refresh that provider's cached status on success, then strip the
+  // params so a refresh or back-button doesn't re-show the banner and the
+  // address bar stays clean.
   useEffect(() => {
-    if (!upwork) return
-    if (upwork === 'connected') {
-      setBanner({ tone: 'success', text: 'Upwork connected.' })
-      queryClient.invalidateQueries({ queryKey: upworkStatusQueryKey() })
-    } else if (upwork === 'error') {
-      setBanner({ tone: 'error', text: upworkErrorMessage(reason) })
+    for (const p of OAUTH_PROVIDERS) {
+      const outcome = searchParams.get(p.param)
+      if (!outcome) continue
+      if (outcome === 'connected') {
+        setBanner({ tone: 'success', text: `${p.label} connected.` })
+        queryClient.invalidateQueries({ queryKey: p.statusKey() })
+      } else if (outcome === 'error') {
+        setBanner({ tone: 'error', text: oauthErrorMessage(p.label, searchParams.get('reason')) })
+      }
+      setSearchParams({}, { replace: true })
+      break
     }
-    setSearchParams({}, { replace: true })
-  }, [upwork, reason, queryClient, setSearchParams])
+  }, [searchParams, queryClient, setSearchParams])
 
   const { data: searches, isLoading, isError, isFetching } = useQuery({
     queryKey: savedSearchesQueryKey(),
@@ -63,14 +77,17 @@ export default function Sources() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Sources</h1>
         <p className="text-slate-400">
-          Connect Upwork and manage the saved searches the poller runs. JobDesk only finds
-          and tracks work — it never applies for you.
+          Connect Upwork and Freelancer, and manage the saved searches the poller runs.
+          JobDesk only finds and tracks work — it never applies for you.
         </p>
       </div>
 
       {banner && <ConnectResultBanner banner={banner} onDismiss={() => setBanner(null)} />}
 
-      <UpworkPanel />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <UpworkPanel />
+        <FreelancerPanel />
+      </div>
 
       <section className="space-y-4">
         <div className="flex items-center justify-between gap-4">
