@@ -1,12 +1,57 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import { listSavedSearches, savedSearchesQueryKey } from '../lib/api/savedSearches'
+import { upworkStatusQueryKey } from '../lib/api/upwork'
 import UpworkPanel from '../components/sources/UpworkPanel'
 import SavedSearchForm from '../components/sources/SavedSearchForm'
 import SavedSearchCard from '../components/sources/SavedSearchCard'
 
+type ConnectBanner = { tone: 'success' | 'error'; text: string }
+
+/**
+ * Friendly copy for each failure `reason` the Upwork OAuth callback can carry
+ * (backend #70): denied · state · upstream · missing_code. Unknown → a safe
+ * default so a new backend reason never renders a blank banner.
+ */
+function upworkErrorMessage(reason: string | null): string {
+  switch (reason) {
+    case 'denied':
+      return 'You declined the Upwork authorization — nothing was connected.'
+    case 'state':
+      return 'The Upwork sign-in could not be verified (state mismatch). Please try connecting again.'
+    case 'upstream':
+      return 'Upwork rejected the connection. Please try again in a moment.'
+    case 'missing_code':
+      return 'Upwork did not return an authorization code. Please try connecting again.'
+    default:
+      return 'Could not connect to Upwork. Please try again.'
+  }
+}
+
 export default function Sources() {
   const [showForm, setShowForm] = useState(false)
+  const [banner, setBanner] = useState<ConnectBanner | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const queryClient = useQueryClient()
+
+  const upwork = searchParams.get('upwork')
+  const reason = searchParams.get('reason')
+
+  // The Upwork OAuth callback (#70) redirects back here with ?upwork=connected
+  // or ?upwork=error&reason=<short>. Turn that into an explicit banner, refresh
+  // the cached connection status on success, then strip the params so a refresh
+  // or back-button doesn't re-show the banner and the address bar stays clean.
+  useEffect(() => {
+    if (!upwork) return
+    if (upwork === 'connected') {
+      setBanner({ tone: 'success', text: 'Upwork connected.' })
+      queryClient.invalidateQueries({ queryKey: upworkStatusQueryKey() })
+    } else if (upwork === 'error') {
+      setBanner({ tone: 'error', text: upworkErrorMessage(reason) })
+    }
+    setSearchParams({}, { replace: true })
+  }, [upwork, reason, queryClient, setSearchParams])
 
   const { data: searches, isLoading, isError, isFetching } = useQuery({
     queryKey: savedSearchesQueryKey(),
@@ -22,6 +67,8 @@ export default function Sources() {
           and tracks work — it never applies for you.
         </p>
       </div>
+
+      {banner && <ConnectResultBanner banner={banner} onDismiss={() => setBanner(null)} />}
 
       <UpworkPanel />
 
@@ -73,6 +120,36 @@ export default function Sources() {
           </>
         )}
       </section>
+    </div>
+  )
+}
+
+/** Dismissible success/error banner shown after the Upwork OAuth redirect. */
+function ConnectResultBanner({
+  banner,
+  onDismiss,
+}: {
+  banner: ConnectBanner
+  onDismiss: () => void
+}) {
+  const tone =
+    banner.tone === 'success'
+      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+      : 'border-red-500/30 bg-red-500/10 text-red-400'
+  return (
+    <div
+      role={banner.tone === 'success' ? 'status' : 'alert'}
+      className={`flex items-start justify-between gap-4 rounded-lg border px-4 py-3 text-sm ${tone}`}
+    >
+      <span>{banner.text}</span>
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Dismiss"
+        className="shrink-0 text-slate-500 transition-colors hover:text-slate-300"
+      >
+        ✕
+      </button>
     </div>
   )
 }
