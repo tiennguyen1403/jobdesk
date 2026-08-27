@@ -2,7 +2,7 @@ import type { ReactElement } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useSearchParams } from 'react-router-dom'
 import Sources from './Sources'
 import { getUpworkStatus } from '../lib/api/upwork'
 import { createSavedSearch, listSavedSearches, runSavedSearch } from '../lib/api/savedSearches'
@@ -61,11 +61,24 @@ vi.mock('../lib/api/savedSearches', () => {
   }
 })
 
-function renderPage(ui: ReactElement = <Sources />) {
+// Surfaces the live `upwork` query param so a test can assert the OAuth params
+// were stripped from the URL after the banner rendered. '∅' = param absent.
+function UpworkParamProbe() {
+  const [params] = useSearchParams()
+  return <span data-testid="upwork-param">{params.get('upwork') ?? '∅'}</span>
+}
+
+function renderPage(
+  ui: ReactElement = <Sources />,
+  { initialEntries = ['/sources'] }: { initialEntries?: string[] } = {},
+) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>{ui}</MemoryRouter>
+      <MemoryRouter initialEntries={initialEntries}>
+        {ui}
+        <UpworkParamProbe />
+      </MemoryRouter>
     </QueryClientProvider>,
   )
 }
@@ -127,5 +140,18 @@ describe('Sources page', () => {
         }),
       ),
     )
+  })
+
+  it('shows a success banner and strips the param after ?upwork=connected', async () => {
+    renderPage(<Sources />, { initialEntries: ['/sources?upwork=connected'] })
+    expect(await screen.findByText(/upwork connected/i)).toBeDefined()
+    // The OAuth param is removed so a refresh/back-button won't re-show the banner.
+    await waitFor(() => expect(screen.getByTestId('upwork-param').textContent).toBe('∅'))
+  })
+
+  it('shows a reason-derived error banner and strips the param on ?upwork=error', async () => {
+    renderPage(<Sources />, { initialEntries: ['/sources?upwork=error&reason=denied'] })
+    expect(await screen.findByText(/declined the upwork authorization/i)).toBeDefined()
+    await waitFor(() => expect(screen.getByTestId('upwork-param').textContent).toBe('∅'))
   })
 })
