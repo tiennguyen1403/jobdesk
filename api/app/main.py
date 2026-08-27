@@ -8,6 +8,7 @@ from .ai import AIConfigError, AIServiceError
 from .config import settings
 from .routers import (
     ai,
+    analytics,
     applications,
     capture,
     cvs,
@@ -100,6 +101,7 @@ app.include_router(ai.router, prefix="/api")
 app.include_router(upwork.router, prefix="/api")
 app.include_router(freelancer.router, prefix="/api")
 app.include_router(capture.router, prefix="/api")
+app.include_router(analytics.router, prefix="/api")
 
 
 @app.get("/")
