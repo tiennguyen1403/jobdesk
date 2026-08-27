@@ -86,7 +86,7 @@ def test_connect_redirects_to_freelancer_authorize_with_state(
     resp = client.get("/api/freelancer/connect", follow_redirects=False)
     assert resp.status_code == 307
     loc = resp.headers["location"]
-    assert loc.startswith("https://www.freelancer.com/oauth/authorize?")
+    assert loc.startswith("https://accounts.freelancer.com/oauth/authorize?")
     q = parse_qs(urlparse(loc).query)
     assert q["response_type"] == ["code"]
     assert q["client_id"] == ["cid"]

@@ -21,11 +21,11 @@ Flow (authorization-code grant, RFC 6749):
 Secrets: tokens live only in the local DB, are never logged, and are sent
 nowhere but Freelancer's token endpoint.
 
-Endpoints confirmed against Freelancer's live OAuth2 docs (Aug 2026). Freelancer
-splits OAuth across two hosts — the authorize page is on ``www.freelancer.com``,
-the token endpoint on ``accounts.freelancer.com``:
+Endpoints verified against the live server (2026-08-27): both the authorize page
+and the token endpoint are on ``accounts.freelancer.com`` — the ``www`` host 404s
+on ``/oauth/authorize``:
 
-* authorize: ``https://www.freelancer.com/oauth/authorize``
+* authorize: ``https://accounts.freelancer.com/oauth/authorize``
 * token:     ``https://accounts.freelancer.com/oauth/token``
 """
 from __future__ import annotations
@@ -44,9 +44,9 @@ from ..models import FreelancerToken
 # Single-user: exactly one token record, keyed by this provider name.
 PROVIDER = "freelancer"
 
-# Freelancer splits OAuth across two hosts: authorize on www.freelancer.com,
-# token exchange on accounts.freelancer.com. Confirmed against the live docs.
-AUTHORIZE_URL = "https://www.freelancer.com/oauth/authorize"
+# Both OAuth endpoints live on accounts.freelancer.com — the authorize page AND
+# the token exchange. The www host 404s on /oauth/authorize (verified live 2026-08-27).
+AUTHORIZE_URL = "https://accounts.freelancer.com/oauth/authorize"
 TOKEN_URL = "https://accounts.freelancer.com/oauth/token"
 
 # Treat a token as expired a minute early, so a call never races the boundary.
