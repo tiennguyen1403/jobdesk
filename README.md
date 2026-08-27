@@ -20,7 +20,9 @@ A personal freelance job manager: aggregate jobs, track an application pipeline 
 
 ## What works today
 
+- **Dashboard** — an analytics overview of your own data: source mix, pipeline funnel, match-score distribution, and AI spend.
 - **Jobs** — add & browse postings, filtered to part-time / hourly / project work.
+- **Sources** — connect Upwork & Freelancer (read-only OAuth) and manage the saved searches a background poller ingests from; jobs also arrive via manual add or the capture bookmarklet. Never auto-applies.
 - **Pipeline** — a Kanban board tracking each application (saved → applied → interviewing → offer → rejected). Tracking-only; JobDesk never auto-applies.
 - **Studio** (per job) — an AI match score, a tailored CV, and a proposal draft (Claude), edited in-app and copied out to apply manually on the platform.
 - **AI cost logging** — every Claude call is recorded in the `ai_run` table for token/cost tracking.
@@ -84,4 +86,5 @@ docker compose exec api alembic upgrade head
 - **Phase 1** — Tracker MVP: Job + Application, list + part-time filter, Kanban ✅ *(v0.1.0)*
 - **Phase 2** — CV/Proposal studio + Claude AI ✅ *(v0.2.0)*
 - **Phase 3** — Upwork API connector (poll saved searches) ✅ *(v0.3.0)*
-- **Phase 4** — Scale-up (Freelancer.com, analytics) ← next
+- **Phase 4** — Scale-up (Freelancer.com, analytics) ✅ *(v0.4.0)*
+- **Phase 5** — Hardening & deploy (auth, token security, backup, hosting) ← next

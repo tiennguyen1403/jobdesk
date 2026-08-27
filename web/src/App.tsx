@@ -39,7 +39,7 @@ export default function App() {
             </nav>
           </div>
           <span className="rounded-full bg-slate-800 px-3 py-1 font-mono text-xs text-slate-400">
-            Phase 3 · Upwork
+            Phase 4 · Freelancer
           </span>
         </div>
       </header>
