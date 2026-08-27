@@ -2,6 +2,7 @@
 from .ai_run import AiRun
 from .application import Application, ApplicationStatus
 from .cv import Cv
+from .freelancer_token import FreelancerToken
 from .job import Job
 from .proposal import Proposal
 from .saved_search import SavedSearch
@@ -12,6 +13,7 @@ __all__ = [
     "Application",
     "ApplicationStatus",
     "Cv",
+    "FreelancerToken",
     "Job",
     "Proposal",
     "SavedSearch",
