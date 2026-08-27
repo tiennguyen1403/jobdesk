@@ -337,9 +337,14 @@ class UpworkProvider(JobProvider):
     def _filter(search: dict) -> dict:
         """Translate the app's search shape into a MarketplaceJobPostingsSearchFilter."""
         job_filter: dict = {}
+        # Fold keywords + category into the one verified free-text filter, so a
+        # saved search's ``category`` actually narrows the poll instead of being
+        # silently dropped (a proper category taxonomy filter can come later).
         keywords = _norm_str(search.get("keywords")) or _norm_str(search.get("q"))
-        if keywords is not None:
-            job_filter["searchExpression_eq"] = keywords
+        category = _norm_str(search.get("category"))
+        expression = " ".join(part for part in (keywords, category) if part) or None
+        if expression is not None:
+            job_filter["searchExpression_eq"] = expression
         workload = _norm_str(search.get("workload"))
         engagement = _ENGAGEMENT_BY_WORKLOAD.get(workload) if workload else None
         if engagement is not None:

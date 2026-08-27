@@ -30,7 +30,7 @@ from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
 from ..models import SavedSearch
-from ..providers import JobProvider, UpworkProvider
+from ..providers import JobProvider, NormalizedJob, UpworkProvider
 from .ingest import IngestSummary, ingest_jobs
 from .upwork_oauth import UpworkError
 
@@ -60,27 +60,53 @@ def _provider_for(search: SavedSearch, db: Session) -> JobProvider:
     )
 
 
+def _within_scope(job: NormalizedJob, query: dict) -> bool:
+    """Keep only jobs that fit JobDesk's part-time scope — the ingest choke point.
+
+    The Upwork request filter is coarse (engagement buckets) and a search's
+    ``workload`` may be left unset ("any"), so the poll makes the final call here,
+    provider-agnostically:
+
+    * **HARD rule — never full-time:** a ``full_time`` posting is dropped no matter
+      what the search asked for (or what a future provider returns).
+    * **weekly-hours cap:** honor the search's ``max_weekly_hours`` when the posting
+      reports its hours — only a *known* over-cap is dropped (unknown hours pass).
+    """
+    if job.workload == "full_time":
+        return False
+    cap = query.get("max_weekly_hours")
+    if isinstance(cap, int) and not isinstance(cap, bool):
+        if job.weekly_hours is not None and job.weekly_hours > cap:
+            return False
+    return True
+
+
 def run_saved_search(db: Session, search: SavedSearch) -> IngestSummary:
-    """Poll one saved search now: fetch → ingest → stamp ``last_polled_at``, commit.
+    """Poll one saved search now: fetch → scope-filter → ingest → stamp, commit.
 
     Returns the :class:`~app.services.ingest.IngestSummary` (created/updated/skipped
     + affected ids). Provider errors (Upwork unconfigured/not connected) propagate;
     the manual endpoint surfaces them, the scheduler catches them (see the module
-    docstring). ``last_polled_at`` is stamped only on a successful fetch, so it
-    tracks the last *successful* poll — a failed attempt leaves it untouched.
+    docstring). Postings outside the part-time scope (:func:`_within_scope`) are
+    dropped before ingest, so nothing full-time or over the weekly-hours cap ever
+    lands. ``last_polled_at`` is stamped only on a successful fetch, so it tracks
+    the last *successful* poll — a failed attempt leaves it untouched.
     """
     provider = _provider_for(search, db)
-    normalized = provider.fetch(search.query or {})
-    summary = ingest_jobs(db, provider.key, normalized)
+    query = search.query or {}
+    fetched = provider.fetch(query)
+    in_scope = [job for job in fetched if _within_scope(job, query)]
+    summary = ingest_jobs(db, provider.key, in_scope)
     search.last_polled_at = _now()
     db.commit()
     log.info(
-        "Polled saved search %d (%s): created=%d updated=%d skipped=%d",
+        "Polled saved search %d (%s): created=%d updated=%d skipped=%d dropped=%d",
         search.id,
         search.name,
         summary.created,
         summary.updated,
         summary.skipped,
+        len(fetched) - len(in_scope),
     )
     return summary
 
