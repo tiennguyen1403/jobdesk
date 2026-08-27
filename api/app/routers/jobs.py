@@ -57,6 +57,14 @@ def list_jobs(
     workload: Literal["part_time", "full_time"] | None = Query(
         default=None, description="Keep only jobs with this workload (scope guardrail)."
     ),
+    exclude_full_time: bool = Query(
+        default=False,
+        description=(
+            "Part-time scope lens: keep jobs that are not full-time — part_time OR "
+            "an unspecified (NULL) workload. Excludes only known full_time postings, "
+            "so gig sources that report no workload (e.g. Freelancer) still show."
+        ),
+    ),
     max_weekly_hours: int | None = Query(
         default=None, ge=0, description="Keep only jobs whose weekly_hours is <= this."
     ),
@@ -72,6 +80,11 @@ def list_jobs(
 
     if workload is not None:
         stmt = stmt.where(Job.workload == workload)
+    if exclude_full_time:
+        # "Not full-time" = part_time or unknown. IS DISTINCT FROM treats a NULL
+        # workload as not-full_time (unlike !=), so workload-less gigs (e.g.
+        # Freelancer, which reports no weekly hours) stay in the part-time lens.
+        stmt = stmt.where(Job.workload.is_distinct_from("full_time"))
     if max_weekly_hours is not None:
         # Jobs with an unknown (NULL) weekly_hours are excluded: an unstated
         # workload can't be confirmed to fit the available evenings/weekends.

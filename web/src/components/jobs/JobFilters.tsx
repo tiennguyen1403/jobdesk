@@ -69,6 +69,7 @@ export default function JobFilters({ value, onChange }: Props) {
           <option value="manual">Manual</option>
           <option value="capture">Capture</option>
           <option value="upwork">Upwork</option>
+          <option value="freelancer">Freelancer</option>
         </select>
       </label>
 
