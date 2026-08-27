@@ -6,6 +6,41 @@ roadmap (see the README); the format loosely follows
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-08-27 — Phase 4: Scale-up (Freelancer.com + analytics)
+
+### Added
+- **Freelancer.com OAuth2 connect flow** — `GET /api/freelancer/connect|callback|status`
+  and `POST /api/freelancer/disconnect`, mirroring the Upwork flow with a deliberately
+  separate `freelancer_token` store (Upwork's is untouched). Freelancer splits OAuth
+  across two hosts (authorize on `www.freelancer.com`, token on
+  `accounts.freelancer.com`) and the app handles both; missing credentials return a
+  clean `503`, an upstream token failure a `502`, and a clock-expired token is
+  refreshed before use (#75).
+- **Freelancer provider** — `FreelancerProvider.fetch()` searches active projects over
+  the REST API and maps each onto `NormalizedJob` (including the part-time signals
+  workload / weekly_hours / duration), so Freelancer postings flow through the same
+  ingest / pipeline / CV / AI path as Upwork and manual jobs. It authenticates with
+  Freelancer's provider-specific `Freelancer-OAuth-V1` header, supports polling, and
+  refreshes + retries once on a 401; the poller routes `"freelancer"` to it (#76).
+- **Analytics summary endpoint** — `GET /api/analytics/summary`, a typed read-only
+  rollup of JobDesk's own data: jobs by source, match-score bands + part-time fit,
+  the pipeline funnel + applied conversion, and lifetime/daily AI spend by feature.
+  Aggregated in SQL over the existing `job` / `application` / `ai_run` tables — no new
+  migrations (#78).
+- **Dashboard analytics overview** — the Dashboard becomes an analytics overview,
+  rendering the summary as source-mix, pipeline-funnel, match-score, and AI-spend
+  panels (CSS bars + an inline-SVG daily sparkline, no chart library) with headline
+  KPIs, over loading / error / empty (all-zero) states (#79).
+- **Sources: Freelancer panel + provider-aware saved searches** — a `FreelancerPanel`
+  (connect / status / disconnect) beside the Upwork one, a shared OAuth result banner
+  generalized over both providers, and a Source select on the saved-search form so a
+  saved search can target Upwork or Freelancer; the part-time constraints (workload
+  `part_time` / max weekly hours) are unchanged (#77).
+
+### Notes
+- Both connectors are read-only: like Upwork, the Freelancer API has no
+  submit-proposal mutation — JobDesk ingests and tracks jobs and never auto-applies.
+
 ## [0.3.0] — 2026-08-27 — Phase 3: Upwork API connector
 
 ### Added
@@ -95,7 +130,8 @@ roadmap (see the README); the format loosely follows
 - The provider layer (`JobProvider` / `NormalizedJob`) that keeps job ingestion
   source-agnostic, plus the health endpoint and CI.
 
-[Unreleased]: https://github.com/tiennguyen1403/jobdesk/compare/v0.3.0...development
+[Unreleased]: https://github.com/tiennguyen1403/jobdesk/compare/v0.4.0...development
+[0.4.0]: https://github.com/tiennguyen1403/jobdesk/releases/tag/v0.4.0
 [0.3.0]: https://github.com/tiennguyen1403/jobdesk/releases/tag/v0.3.0
 [0.2.0]: https://github.com/tiennguyen1403/jobdesk/releases/tag/v0.2.0
 [0.1.0]: https://github.com/tiennguyen1403/jobdesk/releases/tag/v0.1.0

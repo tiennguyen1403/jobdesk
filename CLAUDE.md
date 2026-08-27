@@ -68,6 +68,6 @@ Project hooks in `.claude/settings.json`: ask before editing `.env` (secrets); w
 
 ## Roadmap
 
-Phase 0 scaffold (done) → Phase 1 tracker MVP (job + application, list + part-time filter, Kanban) **(done, v0.1.0)** → Phase 2 CV/proposal studio + Claude AI **(done, v0.2.0)** → Phase 3 Upwork API connector **(done, v0.3.0)** → **Phase 4 scale-up (Freelancer.com, analytics) (next)**.
+Phase 0 scaffold (done) → Phase 1 tracker MVP (job + application, list + part-time filter, Kanban) **(done, v0.1.0)** → Phase 2 CV/proposal studio + Claude AI **(done, v0.2.0)** → Phase 3 Upwork API connector **(done, v0.3.0)** → Phase 4 scale-up (Freelancer.com, analytics) **(done, v0.4.0)** → **Phase 5 hardening & deploy (auth, token security, backup, hosting) (next)**.
 
 Full blueprint (architecture, data model, API endpoints, roadmap): https://claude.ai/code/artifact/0bb986b5-66fd-495e-bed7-9d7dcc81cec5
