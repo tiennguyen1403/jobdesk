@@ -37,6 +37,16 @@ class ScoreMatchResponse(BaseModel):
     run_id: int
 
 
+class ScoreUnscoredResponse(BaseModel):
+    """Summary of a batch score-unscored run (POST /api/jobs/score-unscored)."""
+
+    scored: int  # jobs scored successfully this run
+    failed: int  # jobs whose Claude call failed (counted; the batch continued)
+    remaining_unscored: int  # jobs still without a score after this run
+    total_cost_usd: float
+    run_ids: list[int]  # the ai_run ids of the successful scores
+
+
 class TailorCvRequest(BaseModel):
     """Optional body for POST /api/jobs/{id}/tailor-cv.
 

@@ -35,9 +35,22 @@ vi.mock('../lib/api/jobs', () => {
     listJobs: vi.fn().mockResolvedValue([sampleJob]),
     createJob: vi.fn(),
     createApplicationForJob: vi.fn().mockResolvedValue({}),
+    scoreUnscored: vi.fn(),
     jobsQueryKey: (filters = {}) => ['jobs', filters],
   }
 })
+
+// The Jobs page renders <ScoreUnscoredBar/>, which reads analytics. Stub it with
+// zero unscored so the bar stays hidden and doesn't interfere with these tests.
+vi.mock('../lib/api/analytics', () => ({
+  getAnalyticsSummary: vi.fn().mockResolvedValue({
+    jobs: { total: 0, by_source: {} },
+    match: { scored: 0, unscored: 0, part_time_fit: 0, bands: { low: 0, medium: 0, high: 0 } },
+    pipeline: { total: 0, by_status: {}, applied_conversion: 0 },
+    ai: { total_cost_usd: 0, input_tokens: 0, output_tokens: 0, by_feature: [], days: 30, recent: [] },
+  }),
+  analyticsSummaryQueryKey: (days?: number) => ['analytics-summary', days],
+}))
 
 /** A complete Job for tests that need more than the factory's single fixture. */
 function makeJob(overrides: Partial<Job> = {}): Job {

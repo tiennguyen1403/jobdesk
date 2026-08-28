@@ -9,6 +9,7 @@ import {
 import JobCard from '../components/jobs/JobCard'
 import JobFilters, { type JobFiltersValue } from '../components/jobs/JobFilters'
 import AddJobForm from '../components/jobs/AddJobForm'
+import ScoreUnscoredBar from '../components/jobs/ScoreUnscoredBar'
 
 /** Delay a fast-changing value so text search doesn't fire a request per keystroke. */
 function useDebouncedValue<T>(value: T, delayMs: number): T {
@@ -96,6 +97,8 @@ export default function Jobs() {
         value={filters}
         onChange={(patch) => setFilters((f) => ({ ...f, ...patch }))}
       />
+
+      <ScoreUnscoredBar />
 
       {promote.isError && (
         <p className="text-sm text-red-400">

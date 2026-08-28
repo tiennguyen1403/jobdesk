@@ -2,10 +2,10 @@ from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from ..ai import draft_proposal, score_match, tailor_cv
+from ..ai import AIServiceError, draft_proposal, score_match, tailor_cv
 from ..db import get_db
 from ..models import Application, ApplicationStatus, Cv, Job, Proposal
 from ..providers import ManualProvider
@@ -13,6 +13,7 @@ from ..schemas.ai import (
     DraftProposalRequest,
     DraftProposalResponse,
     ScoreMatchResponse,
+    ScoreUnscoredResponse,
     TailorCvRequest,
     TailorCvResponse,
 )
@@ -97,6 +98,75 @@ def list_jobs(
 
     stmt = stmt.order_by(Job.created_at.desc(), Job.id.desc()).limit(limit).offset(offset)
     return list(db.scalars(stmt).all())
+
+
+@router.post("/score-unscored", response_model=ScoreUnscoredResponse)
+def score_unscored_jobs(
+    db: Session = Depends(get_db),
+    limit: int = Query(
+        default=25,
+        ge=1,
+        le=100,
+        description="Max jobs to score this run — a cost guardrail (each is a paid AI call).",
+    ),
+) -> ScoreUnscoredResponse:
+    """Batch-score the newest never-scored jobs (``match_score IS NULL``), cost-aware.
+
+    Ingestion never auto-scores (each ``score_match`` is a paid Claude call), so
+    this is the one-click way to catch up: it scores up to ``limit`` unscored
+    jobs, newest first, and persists each result. The ``limit`` caps the spend a
+    single call can trigger.
+
+    Continue-on-error: one job's upstream failure (:class:`AIServiceError`, the
+    per-job 502 path) is counted and the run moves on — a bad job never aborts
+    the batch, and it stays unscored for a later run. A missing API key
+    (:class:`AIConfigError`) is different: the whole layer is off, so it
+    propagates as **503** rather than being counted once per job.
+    """
+    jobs = list(
+        db.scalars(
+            select(Job)
+            .where(Job.match_score.is_(None))
+            .order_by(Job.created_at.desc(), Job.id.desc())
+            .limit(limit)
+        ).all()
+    )
+
+    scored = 0
+    failed = 0
+    total_cost = 0.0
+    run_ids: list[int] = []
+
+    for job in jobs:
+        try:
+            match = score_match(db, job)
+        except AIServiceError:
+            # This job's Claude call failed (already logged as an ai_run error
+            # row). Count it and keep going; it stays unscored for a later run.
+            failed += 1
+            continue
+
+        job.match_score = match.score
+        job.match_reasons = match.reasons
+        job.match_part_time_fit = match.part_time_fit
+        job.match_scored_at = datetime.now(timezone.utc)
+        db.commit()
+
+        scored += 1
+        total_cost += match.result.cost_usd
+        run_ids.append(match.result.run.id)
+
+    remaining = db.scalar(
+        select(func.count()).select_from(Job).where(Job.match_score.is_(None))
+    )
+
+    return ScoreUnscoredResponse(
+        scored=scored,
+        failed=failed,
+        remaining_unscored=int(remaining or 0),
+        total_cost_usd=round(total_cost, 6),
+        run_ids=run_ids,
+    )
 
 
 @router.get("/{job_id}", response_model=JobRead)
