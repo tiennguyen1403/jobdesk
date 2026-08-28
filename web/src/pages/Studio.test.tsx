@@ -84,6 +84,12 @@ describe('Studio page', () => {
     expect(screen.getByText(/React skills match well/i)).toBeDefined()
   })
 
+  it('shows the full job description and skill chips', async () => {
+    renderStudio(<Studio />)
+    expect(await screen.findByText('Small React + Tailwind fixes.')).toBeDefined()
+    expect(screen.getByText('React', { selector: 'li' })).toBeDefined()
+  })
+
   it('offers CV and proposal generation when none exist yet', async () => {
     renderStudio(<Studio />)
     expect(await screen.findByRole('button', { name: /generate cv/i })).toBeDefined()

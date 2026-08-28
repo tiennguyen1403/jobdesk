@@ -39,6 +39,32 @@ function humanize(value: string): string {
   return value.replace(/_/g, ' ')
 }
 
+// Source badge, keyed by the provider's `source` (mirrors JobCard). An unknown
+// source falls back to a neutral pill, so a future platform still renders.
+const SOURCE_LABELS: Record<string, string> = {
+  manual: 'Manual',
+  capture: 'Capture',
+  upwork: 'Upwork',
+  freelancer: 'Freelancer',
+}
+
+const SOURCE_STYLES: Record<string, string> = {
+  manual: 'bg-slate-800 text-slate-300 ring-slate-700',
+  capture: 'bg-sky-500/10 text-sky-300 ring-sky-500/30',
+  upwork: 'bg-emerald-500/10 text-emerald-300 ring-emerald-500/30',
+  freelancer: 'bg-indigo-500/10 text-indigo-300 ring-indigo-500/30',
+}
+
+const SOURCE_FALLBACK_STYLE = 'bg-slate-800 text-slate-300 ring-slate-700'
+
+/** Human date for a posting, or null if absent/invalid. */
+function formatPosted(iso: string | null): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
 export default function Studio() {
   const { jobId: jobIdParam } = useParams()
   const jobId = Number(jobIdParam)
@@ -120,6 +146,9 @@ export default function Studio() {
 
   const job = jobQuery.data
   const partTime = job.workload === 'part_time'
+  const sourceLabel = SOURCE_LABELS[job.source] ?? job.source
+  const sourceStyle = SOURCE_STYLES[job.source] ?? SOURCE_FALLBACK_STYLE
+  const posted = formatPosted(job.posted_at)
 
   return (
     <div className="space-y-6">
@@ -169,6 +198,43 @@ export default function Studio() {
           manually on the platform — JobDesk never submits for you.
         </p>
       </div>
+
+      <section className="space-y-4 rounded-xl border border-slate-800 bg-slate-900 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-slate-200">Job details</h2>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            <span
+              className={`rounded-full px-2 py-0.5 font-medium ring-1 ${sourceStyle}`}
+              title={`Source: ${sourceLabel}`}
+            >
+              {sourceLabel}
+            </span>
+            {posted && <span className="text-slate-500">posted {posted}</span>}
+            {job.client_country && <span className="text-slate-400">{job.client_country}</span>}
+          </div>
+        </div>
+
+        {job.description ? (
+          <p className="whitespace-pre-line text-sm leading-relaxed text-slate-300">
+            {job.description}
+          </p>
+        ) : (
+          <p className="text-sm text-slate-500">No description was captured for this job.</p>
+        )}
+
+        {job.skills.length > 0 && (
+          <ul className="flex flex-wrap gap-1.5">
+            {job.skills.map((skill) => (
+              <li
+                key={skill}
+                className="rounded bg-slate-800/80 px-2 py-0.5 text-xs text-slate-300"
+              >
+                {skill}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <MatchScorePanel
         score={job.match_score}
