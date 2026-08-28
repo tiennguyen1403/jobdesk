@@ -263,3 +263,105 @@ def test_score_match_schema_avoids_unsupported_keywords() -> None:
     score = _SCORE_MATCH_FORMAT["format"]["schema"]["properties"]["score"]
     assert score["type"] == "integer"
     assert "100" in score["description"]
+
+
+# --- score-unscored: cost-aware batch scoring of never-scored jobs -----------
+#
+# These drive POST /api/jobs/score-unscored with the same fake Anthropic client.
+# Each asserts on the specific jobs it creates (never on global counts), so they
+# hold regardless of any jobs already present in the database.
+
+
+def test_score_unscored_scores_newest_first_and_respects_limit(
+    client: TestClient, monkeypatch
+) -> None:
+    _install_fake_client(monkeypatch, create=lambda **kw: _fake_response(_score_json(score=77)))
+
+    older = client.post(
+        "/api/jobs", json=_job_payload(url="https://example.test/jobs/b-old")
+    ).json()["id"]
+    newer = client.post(
+        "/api/jobs", json=_job_payload(url="https://example.test/jobs/b-new")
+    ).json()["id"]
+
+    resp = client.post("/api/jobs/score-unscored", params={"limit": 1})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+
+    # The limit is a hard cap: exactly one job scored this run.
+    assert body["scored"] == 1
+    assert body["failed"] == 0
+    assert len(body["run_ids"]) == 1
+
+    # Newest first: the just-created `newer` job got the score; `older` did not.
+    assert client.get(f"/api/jobs/{newer}").json()["match_score"] == 77
+    assert client.get(f"/api/jobs/{older}").json()["match_score"] is None
+    # At least `older` is still unscored after this run.
+    assert body["remaining_unscored"] >= 1
+
+
+def test_score_unscored_skips_already_scored_jobs(client: TestClient, monkeypatch) -> None:
+    # `unscored` is created first (older); `scored` is newer and gets a score up
+    # front. The batch must skip the newer already-scored job and pick the older
+    # NULL one — proving it selects only match_score IS NULL.
+    unscored = client.post(
+        "/api/jobs", json=_job_payload(url="https://example.test/jobs/u")
+    ).json()["id"]
+    scored = client.post(
+        "/api/jobs", json=_job_payload(url="https://example.test/jobs/s")
+    ).json()["id"]
+
+    _install_fake_client(monkeypatch, create=lambda **kw: _fake_response(_score_json(score=99)))
+    client.post(f"/api/jobs/{scored}/score-match")
+
+    # Re-point the fake at a distinct score, so an accidental re-score is visible.
+    _install_fake_client(monkeypatch, create=lambda **kw: _fake_response(_score_json(score=55)))
+    body = client.post("/api/jobs/score-unscored", params={"limit": 1}).json()
+
+    assert body["scored"] == 1
+    # The older NULL job was scored with the new value...
+    assert client.get(f"/api/jobs/{unscored}").json()["match_score"] == 55
+    # ...and the already-scored newer job was left untouched (still 99).
+    assert client.get(f"/api/jobs/{scored}").json()["match_score"] == 99
+
+
+def test_score_unscored_continues_past_a_failing_job(client: TestClient, monkeypatch) -> None:
+    # The fake fails only for the job titled FAILME; the other is scored. One bad
+    # job is counted and the batch keeps going — never a 5xx for the whole run.
+    def create(**kwargs):
+        if "FAILME" in json.dumps(kwargs.get("messages")):
+            raise RuntimeError("upstream exploded for this one")
+        return _fake_response(_score_json(score=70))
+
+    _install_fake_client(monkeypatch, create=create)
+
+    good = client.post(
+        "/api/jobs", json=_job_payload(url="https://example.test/jobs/good", title="SCOREME")
+    ).json()["id"]
+    bad = client.post(
+        "/api/jobs", json=_job_payload(url="https://example.test/jobs/bad", title="FAILME")
+    ).json()["id"]
+
+    # limit=2 processes exactly the two just-created (newest) jobs.
+    resp = client.post("/api/jobs/score-unscored", params={"limit": 2})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["scored"] == 1
+    assert body["failed"] == 1
+
+    assert client.get(f"/api/jobs/{good}").json()["match_score"] == 70
+    # The failed job is left unscored for a later run.
+    assert client.get(f"/api/jobs/{bad}").json()["match_score"] is None
+
+
+def test_score_unscored_missing_key_is_503(client: TestClient, monkeypatch) -> None:
+    monkeypatch.setattr(settings, "anthropic_api_key", None)
+    job = client.post(
+        "/api/jobs", json=_job_payload(url="https://example.test/jobs/nk")
+    ).json()["id"]
+
+    resp = client.post("/api/jobs/score-unscored", params={"limit": 1})
+    assert resp.status_code == 503
+    assert "ANTHROPIC_API_KEY" in resp.json()["detail"]
+    # Nothing scored; the job stays unscored.
+    assert client.get(f"/api/jobs/{job}").json()["match_score"] is None

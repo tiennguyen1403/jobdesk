@@ -208,6 +208,27 @@ export async function scoreMatch(id: number): Promise<ScoreMatchResult> {
   return res.json()
 }
 
+/** The score-unscored batch summary (mirrors ScoreUnscoredResponse). */
+export interface ScoreUnscoredResult {
+  scored: number // jobs scored successfully this run
+  failed: number // jobs whose AI call failed (counted; the batch continued)
+  remaining_unscored: number // jobs still without a score after this run
+  total_cost_usd: number
+  run_ids: number[]
+}
+
+/**
+ * POST /api/jobs/score-unscored — score the newest never-scored jobs (match_score
+ * IS NULL) in one run, up to `limit`. Each job is a paid Claude call, so callers
+ * confirm first and the limit caps the spend.
+ */
+export async function scoreUnscored(limit?: number): Promise<ScoreUnscoredResult> {
+  const qs = limit != null ? `?limit=${limit}` : ''
+  const res = await fetch(`${API_BASE}/api/jobs/score-unscored${qs}`, { method: 'POST' })
+  if (!res.ok) throw new Error(await readError(res, 'Failed to score unscored jobs'))
+  return res.json()
+}
+
 /** POST /api/jobs/{id}/tailor-cv — tailor the base CV to the job; saves a new tailored cv row. */
 export async function tailorCv(id: number, baseCvId?: number | null): Promise<TailorCvResult> {
   const res = await fetch(`${API_BASE}/api/jobs/${id}/tailor-cv`, {
